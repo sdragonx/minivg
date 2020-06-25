@@ -1,5 +1,5 @@
 # ezgdi
-Easy gdiplus for beginners
+　　认识一些初学者，觉得学习C++很困难，于是我帮助他们写了一个小库。库的目的在于简单，易学，易用，欢迎初学者试用！
 
 # Exsample:
 
