@@ -1,8 +1,10 @@
 # ezgdi
 Easy gdiplus for beginners
 
-void OnKeyDown(int Key);
+# Exsample:
 
+<pre><code>
+void OnKeyDown(int Key);
 int main()
 {
     //初始化窗口
@@ -22,3 +24,4 @@ int main()
         fill_rect(100, 100, 200, 200);//填充半透明矩形
     };
 }
+</pre></code>
