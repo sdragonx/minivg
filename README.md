@@ -30,7 +30,30 @@ int main(int argc, char* argv[])
 }
 </pre></code>
 
+# Exsample:（一些简单绘图的例子）
+
 <pre><code>
+
+void OnPaint();
+int main(int argc, char* argv[])
+{
+    //初始化窗口
+    ezInit("窗口标题", 520, 640);
+    //设置按键响应函数
+    ezOnPaint(OnPaint);
+    //绘图效果
+    ezEffectLevel(EZ_QUALITY);
+    //播放音乐
+    ezPlayMusic(TEXT("mp3音乐"));
+
+    //主程序循环
+    ezRun();
+    
+    //关闭库，释放资源
+    ezClose();
+}
+
+
 void OnPaint()
 {
     //清屏
