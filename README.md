@@ -5,7 +5,7 @@
 
 <pre><code>
 void OnKeyDown(int Key);
-int main()
+int main(int argc, char* argv[])
 {
     //初始化窗口
     ezInit("窗口标题", 520, 640);
