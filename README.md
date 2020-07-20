@@ -147,4 +147,4 @@ void OnPaint()
     ezText(10, 350, 200, 50, L"文字右对齐。", EZ_CENTER_V|EZ_RIGHT);
     }
 </pre></code>
-![运行效果图](https://github.com/sdragonx/ezgdi/blob/master/sample.png)
+![运行效果图](https://github.com/sdragonx/ezgdi/blob/master/sample.jpg)
