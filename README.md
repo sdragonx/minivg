@@ -2,6 +2,13 @@
 　　今天正式发布一个初学者用的程序库——EZGDI。这个库结构简洁，使用方便，容易理解。包含基础的绘图函数，键盘鼠标控制，音乐、声音播放，是写小作品的不二选择。<br>
 　　值得一提的是，这个库封装了GDI+绘图接口，GDI+是Windows Vista之后的系统内置的绘图API（xp也能使用），比起传统GDI，在图像抗锯齿、ALPHA半透明等方面得到了支持，非常容易绘制出美轮美奂的图像。Vista之后的界面绘制效果，离不开GDI+的支持。<br>
 　　整个库不需要lib文件，也不需要dll文件，只需要在你的cpp文件里面#include <ezgdi.hpp>它就能工作！测试过的编译器有：C++Builder，vs2017+，gcc。<br>
+  
+　　主文件：<br>
+　　　　ezgdi.hpp    主要接口，有注释说明。<br>
+　　　　ezgdi.inl    代码实现。<br>
+　　项目Github地址：https://github.com/sdragonx/ezgdi<br>
+　　博客地址：https://www.cnblogs.com/sdragonx/p/13184935.html<br>
+　　开源协议：MIT（代码在ezgdi.inl里面，开源，有兴趣自己可以琢磨）<br>
 
 # Exsample:
 
@@ -143,6 +150,6 @@ void OnPaint()
     ezFontColor(0, 0, 255, 128);
     ezDrawRect(10, 350, 200, 50);
     ezText(10, 350, 200, 50, L"文字右对齐。", EZ_CENTER_V|EZ_RIGHT);
-    }
+}
 </pre></code>
 ![运行效果图](https://github.com/sdragonx/ezgdi/blob/master/sample.jpg)
