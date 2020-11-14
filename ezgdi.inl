@@ -618,6 +618,7 @@ public:
         case WM_CREATE:
             break;
         case WM_DESTROY:
+            running = false;
             PostQuitMessage(0);
             break;
         case WM_WINDOWPOSCHANGING:
