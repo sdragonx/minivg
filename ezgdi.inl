@@ -829,13 +829,7 @@ bool ezLoop()
 //程序执行
 void ezRun()
 {
-    MSG Msg;
-    while(GetMessage(&Msg, NULL, 0, 0) > 0){
-        TranslateMessage(&Msg);
-        DispatchMessage(&Msg);
-        __ezgdi_instance.repaint(); //刷新窗口
-        Sleep(1);
-    }
+    while(ezLoop());
 }
 
 //显示fps
