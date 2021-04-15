@@ -1380,37 +1380,44 @@ int ezImage::open(const ezstring& filename)
     return -1;
 }
 
-Gdiplus::Bitmap* LoadResourceImage(int nResID, PCTSTR resource_type)
+//从资源中加载图片
+Gdiplus::Image* LoadResourceImage(UINT id, PCTSTR type)
 {
-	Gdiplus::Bitmap* bmp = NULL;
+	Gdiplus::Image* image = NULL;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 
-    if(resource_type == RT_BITMAP){
-        return Gdiplus::Bitmap::FromResource(GetModuleHandle(NULL), MAKEINTRESOURCE(nResID));
-    }
+	if (type == RT_BITMAP) {
+		return Gdiplus::Bitmap::FromResource(GetModuleHandle(NULL), MAKEINTRESOURCE(id));
+	}
 
-	HRSRC hRsrc = ::FindResource(hInstance, MAKEINTRESOURCE(nResID), resource_type); // type
-	if (hRsrc) {
+	HRSRC hResSource = ::FindResource(hInstance, MAKEINTRESOURCE(id), type);
+	if (hResSource) {
 		// load resource into memory
-		DWORD len = SizeofResource(hInstance, hRsrc);
-		BYTE* lpRsrc = (BYTE*)LoadResource(hInstance, hRsrc);
-		if (lpRsrc) {
-			// Allocate global memory on which to create stream
-			HGLOBAL m_hMem = GlobalAlloc(GMEM_FIXED, len);
-			BYTE* pmem = (BYTE*)GlobalLock(m_hMem);
-			memcpy(pmem, lpRsrc, len);
-			IStream* pstm;
-			CreateStreamOnHGlobal(m_hMem, FALSE, &pstm);
-			// load from stream
-			bmp = Gdiplus::Bitmap::FromStream(pstm);
-			// free/release stuff
-			GlobalUnlock(m_hMem);
-			pstm->Release();
-			FreeResource(lpRsrc);
+		DWORD size = SizeofResource(hInstance, hResSource);
+		BYTE* source = (BYTE*)LoadResource(hInstance, hResSource);
+		if (source) {
+			// allocate global memory on which to create stream
+			HGLOBAL hmem = GlobalAlloc(GMEM_FIXED, size);
+			if (hmem) {
+				// copy data to global memory
+				BYTE* dest = (BYTE*)GlobalLock(hmem);
+				memcpy(dest, source, size);
+				GlobalUnlock(hmem);
+
+				// create stream
+				IStream* pstm;
+				CreateStreamOnHGlobal(hmem, FALSE, &pstm);
+				// load from stream
+				image = Gdiplus::Image::FromStream(pstm);
+				// free/release stuff
+				pstm->Release();
+				GlobalFree(hmem);
+			}
+			FreeResource(source);
 		}
 	}
 
-	return bmp;
+	return image;
 }
 
 //打开资源中的图片
@@ -1583,7 +1590,8 @@ void ezPlayMusic(PCTSTR filename)
 
 void ezStopMusic()
 {
-    mciSendString(TEXT("stop background"), NULL, 0, NULL);
+    mciSendString(TEXT("stop background"), NULL, 0, NULL);//!
+	mciSendString(TEXT("close background"), NULL, 0, NULL);
 }
 
 //导出资源到文件
@@ -1643,6 +1651,12 @@ int ezPlayResourceSound(PCTSTR filename, bool loop)
 int ezPlayResourceSound(int id, bool loop)
 {
     return ezPlayResourceSound(MAKEINTRESOURCE(id), loop);
+}
+
+//停止声音播放
+void ezStopSound()
+{
+	PlaySound(NULL, NULL, SND_FILENAME);
 }
 
 //---------------------------------------------------------------------------

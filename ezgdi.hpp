@@ -248,6 +248,54 @@ T step(T source, T dest, T speed)
  *                                                                          *
  ****************************************************************************/
 
+#define VEC2_OPERATION(op)\
+    template<typename X>\
+    vec2 operator op(const X& value)const\
+    {\
+        return vec2(x op value, y op value);\
+    }\
+    template<typename X>\
+    vec2 operator op(const vec2<X>& v)const\
+    {\
+        return vec2(x op v.x, y op v.y);\
+    }\
+    template<typename X>\
+    const vec2& operator op##=(const X& value)\
+    {\
+        x op##= value; y op##= value;\
+        return *this;\
+    }\
+    template<typename X>\
+    const vec2& operator op##=(const vec2<X>& v)\
+    {\
+        x op##= v.x; y op##= v.y;\
+        return *this;\
+    }
+
+#define VEC4_OPERATION(op)\
+    template<typename X>\
+    this_type operator op(const X& value)const\
+    {\
+        return this_type(x op value, y op value, z op value, w op value);\
+    }\
+    template<typename X>\
+    this_type operator op(const vec4<X>& v)const\
+    {\
+        return this_type(x op v.x, y op v.y, z op v.z, w op v.w);\
+    }\
+    template<typename X>\
+    const this_type& operator op##=(const X& value)\
+    {\
+        x op##= value; y op##= value; z op##= value; w op##= value;\
+        return *this;\
+    }\
+    template<typename X>\
+    const this_type& operator op##=(const vec4<X>& v)\
+    {\
+        x op##= v.x; y op##= v.y; z op##= v.z; w op##= v.w;\
+        return *this;\
+    }
+
 template<typename T> class vec2;
 template<typename T> class vec4;
 
@@ -267,12 +315,12 @@ public:
         return *this;
     }
 
-	vec2& set(T _x, T _y) { x = _x; y = _y; return *this; }
+    vec2& set(T _x, T _y) { x = _x; y = _y; return *this; }
 
-    vec2 operator+(const vec2& other) { return vec2(x + other.x, y + other.y); }
-    vec2 operator-(const vec2& other) { return vec2(x - other.x, y - other.y); }
-    vec2& operator+=(const vec2& other) { x += other.x; y += other.y; return *this; }
-    vec2& operator-=(const vec2& other) { x -= other.x; y -= other.y; return *this; }
+    VEC2_OPERATION(+)
+    VEC2_OPERATION(-)
+    VEC2_OPERATION(*)
+    VEC2_OPERATION(/)
 
     bool operator==(const vec2& other)const
     {
@@ -312,6 +360,8 @@ public:
 
     vec4() : x(), y(), z(), w() { }
     vec4(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
+
+    vec2& set(T _x, T _y, T _z, T _w) { x = _x; y = _y; z = _z; w = _w; return *this; }
 
     bool contains(int vx, int vy)
     {
