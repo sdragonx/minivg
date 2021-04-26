@@ -14,25 +14,28 @@
 #define EZGDI_HPP
 
 #ifndef UNICODE
-    #error UNICODE can not defined.
+  #error UNICODE can not defined.
 #endif
 
 #ifndef _UNICODE
-    #define _UNICODE
+  #define _UNICODE
 #endif
 
 #ifndef NO_WIN32_LEAN_AND_MEAN
-    #define NO_WIN32_LEAN_AND_MEAN
+  #define NO_WIN32_LEAN_AND_MEAN
 #endif
 
 #ifndef STRICT
-    #define STRICT
+  #define STRICT
 #endif
 
 #if defined(__GNUC__)
-	#define EZ_PUBLIC_DECLARE __attribute__((weak))
+  #define EZ_PUBLIC_DECLARE __attribute__((weak))
 #else
-	#define EZ_PUBLIC_DECLARE __declspec(selectany)
+  #define EZ_PUBLIC_DECLARE __declspec(selectany)
+  #ifdef _MSC_VER
+    #define _USE_MATH_DEFINES
+  #endif
 #endif
 
 #include <cmath>
@@ -59,22 +62,22 @@
 enum{
     EZ_NULL,
 
-    EZ_FIXED,               //固定大小
-    EZ_SIZEABLE,            //可缩放
-    EZ_FULLSCREEN,          //全屏
+    EZ_FIXED,                               //固定大小
+    EZ_SIZEABLE,                            //可缩放
+    EZ_FULLSCREEN,                          //全屏
 
-    EZ_LEFT   = 1,          //左
-    EZ_RIGHT  = 2,          //右
-    EZ_UP     = 4,          //上
-    EZ_DOWN   = 8,          //下
-    EZ_TOP    = EZ_UP,      //顶部
-    EZ_BOTTOM = EZ_DOWN,    //底部
+    EZ_LEFT   = 1,                          //左
+    EZ_RIGHT  = 2,                          //右
+    EZ_UP     = 4,                          //上
+    EZ_DOWN   = 8,                          //下
+    EZ_TOP    = EZ_UP,                      //顶部
+    EZ_BOTTOM = EZ_DOWN,                    //底部
 
-    EZ_CENTER_H = EZ_LEFT | EZ_RIGHT,           //水平居中
-    EZ_CENTER_V = EZ_UP | EZ_DOWN,              //垂直居中
-    EZ_CENTER   = EZ_CENTER_H | EZ_CENTER_V,    //居中
+    EZ_CENTER_H = EZ_LEFT | EZ_RIGHT,       //水平居中
+    EZ_CENTER_V = EZ_UP | EZ_DOWN,          //垂直居中
+    EZ_CENTER = EZ_CENTER_H | EZ_CENTER_V,  //居中
 
-    EZ_MIDDLE   = 16,       //中
+    EZ_MIDDLE   = 16,                       //中
 
     EZ_OK = 0,
     EZ_ERROR = -1,
@@ -107,7 +110,7 @@ inline T string_cast(const std::basic_string<_char_t>& str)
 {
     std::basic_stringstream<_char_t> stm(str);
     T n;
-    stm>>n;
+    stm >> n;
     return n;
 }
 
@@ -116,7 +119,7 @@ template<typename _char_t, typename T>
 std::basic_string<_char_t> to_string(const T& value)
 {
     std::basic_stringstream<_char_t> stm;
-    stm<<value;
+    stm << value;
     return stm.str();
 }
 
@@ -174,13 +177,13 @@ public:
  ****************************************************************************/
 
 #ifndef M_PI
-    #define M_PI      3.141592653589793238462   //acos(-1.0)
-    #define M_PI_2    1.570796326794896619231   //M_PI/2
+  #define M_PI      3.141592653589793238462   //acos(-1.0)
+  #define M_PI_2    1.570796326794896619231   //M_PI/2
 #endif
 
 #ifndef M_RD
-    #define M_RD       0.017453292519943295769  //弧度(radian)
-    #define M_INV_RD  57.295779513082320876798  //弧度的倒数(reciprocal) 1.0/M_RD
+  #define M_RD       0.017453292519943295769  //弧度(radian)
+  #define M_INV_RD  57.295779513082320876798  //弧度的倒数(reciprocal) 1.0/M_RD
 #endif
 
 //判断数值是否是0
@@ -198,12 +201,12 @@ inline int random(int n) { return rand() % n; }
 #endif
 
 //产生0 ~ 1之间的随机浮点数
-double randReal() { return double(rand()) / RAND_MAX; }
+double rand_real() { return double(rand()) / RAND_MAX; }
 
 //产生minVal ~ maxVal之间的随机浮点数
-double randReal(double minVal, double maxVal)
+double rand_real(double minVal, double maxVal)
 {
-    return minVal + (maxVal - minVal) * randReal();
+    return minVal + (maxVal - minVal) * rand_real();
 }
 
 //获得向量的弧度
@@ -260,13 +263,13 @@ T step(T source, T dest, T speed)
         return vec2(x op v.x, y op v.y);\
     }\
     template<typename X>\
-    const vec2& operator op##=(const X& value)\
+    vec2& operator op##=(const X& value)\
     {\
         x op##= value; y op##= value;\
         return *this;\
     }\
     template<typename X>\
-    const vec2& operator op##=(const vec2<X>& v)\
+    vec2& operator op##=(const vec2<X>& v)\
     {\
         x op##= v.x; y op##= v.y;\
         return *this;\
@@ -284,13 +287,13 @@ T step(T source, T dest, T speed)
         return this_type(x op v.x, y op v.y, z op v.z, w op v.w);\
     }\
     template<typename X>\
-    const this_type& operator op##=(const X& value)\
+    this_type& operator op##=(const X& value)\
     {\
         x op##= value; y op##= value; z op##= value; w op##= value;\
         return *this;\
     }\
     template<typename X>\
-    const this_type& operator op##=(const vec4<X>& v)\
+    this_type& operator op##=(const vec4<X>& v)\
     {\
         x op##= v.x; y op##= v.y; z op##= v.z; w op##= v.w;\
         return *this;\
@@ -334,7 +337,7 @@ public:
 
     T length()const
     {
-        return sqrt(x * x + y * y);
+        return (T)sqrt(x * x + y * y);
     }
 
     vec2& rotate(double angle)
@@ -361,7 +364,7 @@ public:
     vec4() : x(), y(), z(), w() { }
     vec4(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
 
-    vec2& set(T _x, T _y, T _z, T _w) { x = _x; y = _y; z = _z; w = _w; return *this; }
+    vec4& set(T _x, T _y, T _z, T _w) { x = _x; y = _y; z = _z; w = _w; return *this; }
 
     bool contains(int vx, int vy)
     {

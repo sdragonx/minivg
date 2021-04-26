@@ -1381,9 +1381,9 @@ int ezImage::open(const ezstring& filename)
 }
 
 //从资源中加载图片
-Gdiplus::Image* LoadResourceImage(UINT id, PCTSTR type)
+Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
 {
-	Gdiplus::Image* image = NULL;
+	Gdiplus::Bitmap* image = NULL;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 
 	if (type == RT_BITMAP) {
@@ -1408,7 +1408,7 @@ Gdiplus::Image* LoadResourceImage(UINT id, PCTSTR type)
 				IStream* pstm;
 				CreateStreamOnHGlobal(hmem, FALSE, &pstm);
 				// load from stream
-				image = Gdiplus::Image::FromStream(pstm);
+				image = Gdiplus::Bitmap::FromStream(pstm);
 				// free/release stuff
 				pstm->Release();
 				GlobalFree(hmem);
