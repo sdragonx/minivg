@@ -124,7 +124,7 @@ std::basic_string<_char_t> to_string(const T& value)
 }
 
 //ansi to unicode
-std::wstring to_unicode(const char* str, int length)
+inline std::wstring to_unicode(const char* str, int length)
 {
     std::vector<wchar_t> buf;
     int n = MultiByteToWideChar(CP_ACP, 0, str, length, NULL, 0);
@@ -201,16 +201,16 @@ inline int random(int n) { return rand() % n; }
 #endif
 
 //产生0 ~ 1之间的随机浮点数
-double rand_real() { return double(rand()) / RAND_MAX; }
+inline double rand_real() { return double(rand()) / RAND_MAX; }
 
 //产生minVal ~ maxVal之间的随机浮点数
-double rand_real(double minVal, double maxVal)
+inline double rand_real(double minVal, double maxVal)
 {
     return minVal + (maxVal - minVal) * rand_real();
 }
 
 //获得向量的弧度
-double radian(double x, double y)
+inline double radian(double x, double y)
 {
     double n = 0.0;
     if(!is_zero(y)){
@@ -221,7 +221,7 @@ double radian(double x, double y)
 }
 
 //通过xy获得角度
-double get_angle(double x, double y)
+inline double get_angle(double x, double y)
 {
     return radian(x, y) * M_INV_RD;
 }

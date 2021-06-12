@@ -63,7 +63,7 @@ void delete_all(T& obj)
 }
 
 //创建一个HBITMAP
-HBITMAP bm_create(int width, int height, int pixelbits = 32)
+inline HBITMAP bm_create(int width, int height, int pixelbits = 32)
 {
     HBITMAP hBitmap;
     BITMAPV5HEADER bi;
@@ -160,8 +160,37 @@ public:
 
     HWND handle()const { return m_handle; }
 
-    int create(PCWSTR className, PCWSTR title, int x, int y, int width, int height,
-        DWORD style = WS_OVERLAPPEDWINDOW, DWORD styleEx = 0);
+    int create(
+        PCWSTR className, 
+        PCWSTR title, 
+        int x, int y, int width, int height,
+        DWORD style = WS_OVERLAPPEDWINDOW,
+        DWORD styleEx = 0)
+    {
+        InitClass(className, 0, basic_wndproc);
+
+        //创建窗口
+        m_handle = CreateWindowExW(
+            styleEx,        //窗口的扩展风格
+            className,      //类名
+            title,          //标题
+            style,          //风格
+            x,              //左边位置
+            y,              //顶部位置
+            width,          //宽度
+            height,         //高度
+            NULL,           //父窗口的句柄
+            NULL,           //菜单的句柄或是子窗口的标识符
+            GetModuleHandle(NULL),    //应用程序实例的句柄
+            this);          //指向窗口的创建数据
+
+        if (m_handle == NULL) {
+            MessageBox(NULL, TEXT("Window Creation Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION | MB_OK);
+            return -1;
+        }
+
+        return 0;
+    }
 
     void setBounds(int x, int y, int width, int height) { MoveWindow(m_handle, x, y, width, height, TRUE); }
 
@@ -207,10 +236,35 @@ public:
         RedrawWindow(m_handle, &rc, 0, RDW_UPDATENOW|RDW_INVALIDATE|RDW_NOERASE);
     }
 
-protected:
-    virtual LRESULT wndproc(UINT msg, WPARAM wparam, LPARAM lparam) { return DefWindowProc(m_handle, msg, wparam, lparam); }
-    friend LRESULT CALLBACK basic_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam);
+private:
+    static LRESULT CALLBACK basic_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
+    {
+        ezWindow *win = reinterpret_cast<ezWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        if (win) {
+            return win->wndproc(msg, wparam, lparam);
+        }
+        else if (msg == WM_CREATE) {
+            LPCREATESTRUCTW pcs = LPCREATESTRUCTW(lparam);
+            win = reinterpret_cast<ezWindow*>(pcs->lpCreateParams);
+            if (win) {
+                win->m_handle = hwnd;
+                ::SetLastError(ERROR_SUCCESS);
+                SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LPARAM>(win));
+                if (GetLastError() != ERROR_SUCCESS)
+                    return -1;
+                else
+                    return win->wndproc(msg, wparam, lparam);
+            }
+        }
+        return DefWindowProc(hwnd, msg, wparam, lparam);
+    }
 
+protected:
+    virtual LRESULT wndproc(UINT msg, WPARAM wparam, LPARAM lparam)
+    {
+        return DefWindowProc(m_handle, msg, wparam, lparam);
+    }
+    
     void MotifyStyle(DWORD style, bool enable)
     {
         if(enable){
@@ -221,7 +275,6 @@ protected:
         }
     }
 
-protected:
     //创建控件
     HWND CreateComponent(ezWindow* parent, PCTSTR classname, int x, int y, int width, int height, int style, int styleEx = 0)
     {
@@ -233,86 +286,35 @@ protected:
         return hwnd;
     }
 
-    int ezWindow::InitClass(PCWSTR className, int style, WNDPROC wndproc);
+    //注册窗口类
+    int ezWindow::InitClass(PCWSTR className, int style, WNDPROC wndproc)
+    {
+        int atom = 0;
+        WNDCLASSEXW wc;
+        HINSTANCE hInstance = GetModuleHandle(NULL);
+
+        memset(&wc, 0, sizeof(wc));
+        wc.cbSize = sizeof(WNDCLASSEX);
+        wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;//CS_DBLCLKS 支持鼠标双击事件
+        wc.lpfnWndProc = wndproc;
+        wc.hInstance = hInstance;
+        wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW);
+        wc.lpszClassName = className;
+        wc.hIcon = LoadIconW(hInstance, L"ICO_MAIN");
+        wc.hIconSm = LoadIconW(hInstance, L"ICO_MAIN");
+
+        atom = RegisterClassExW(&wc);
+
+        if (!atom) {
+            //MessageBox(NULL, TEXT("Window Registration Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION|MB_OK);
+            return -1;
+        }
+        return atom;
+    }
 };
 
-//注册窗口类
-int ezWindow::InitClass(PCWSTR className, int style, WNDPROC wndproc)
-{
-    int atom = 0;
-    WNDCLASSEXW wc;
-    HINSTANCE hInstance = GetModuleHandle(NULL);
-
-    memset(&wc, 0, sizeof(wc));
-    wc.cbSize        = sizeof(WNDCLASSEX);
-    wc.style         = CS_HREDRAW|CS_VREDRAW|CS_DBLCLKS;//CS_DBLCLKS 支持鼠标双击事件
-    wc.lpfnWndProc   = wndproc;
-    wc.hInstance     = hInstance;
-    wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW);
-    wc.lpszClassName = className;
-    wc.hIcon         = LoadIconW(hInstance, L"ICO_MAIN");
-    wc.hIconSm       = LoadIconW(hInstance, L"ICO_MAIN");
-
-    atom = RegisterClassExW(&wc);
-
-    if(!atom){
-        //MessageBox(NULL, TEXT("Window Registration Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION|MB_OK);
-        return -1;
-    }
-    return atom;
-}
-
-int ezWindow::create(PCWSTR className, PCWSTR title, int x, int y, int width, int height, DWORD style, DWORD styleEx)
-{
-    InitClass(className, 0, basic_wndproc);
-
-    //创建窗口
-    m_handle = CreateWindowExW(
-        styleEx,        //窗口的扩展风格
-        className,      //类名
-        title,          //标题
-        style,          //风格
-        x,              //左边位置
-        y,              //顶部位置
-        width,          //宽度
-        height,         //高度
-        NULL,           //父窗口的句柄
-        NULL,           //菜单的句柄或是子窗口的标识符
-        GetModuleHandle(NULL),    //应用程序实例的句柄
-        this);          //指向窗口的创建数据
-
-    if(m_handle == NULL){
-        MessageBox(NULL, TEXT("Window Creation Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION|MB_OK);
-        return -1;
-    }
-
-    return 0;
-}
-
-LRESULT CALLBACK basic_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    ezWindow *win = reinterpret_cast<ezWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
-    if(win){
-        return win->wndproc(msg, wparam, lparam);
-    }
-    else if(msg == WM_CREATE){
-        LPCREATESTRUCTW pcs = LPCREATESTRUCTW(lparam);
-        win = reinterpret_cast<ezWindow*>(pcs->lpCreateParams);
-        if(win){
-            win->m_handle = hwnd;
-            ::SetLastError(ERROR_SUCCESS);
-            SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LPARAM>(win));
-            if(GetLastError()!=ERROR_SUCCESS)
-                return -1;
-            else
-                return win->wndproc(msg, wparam, lparam);
-        }
-    }
-    return DefWindowProc(hwnd, msg, wparam, lparam);
-}
-
-int ezWindow::showModel(HWND window)
+inline int ezWindow::showModel(HWND window)
 {
     if (!m_handle){
         return 0;
@@ -404,107 +406,105 @@ private:
     ezButton btnCancel;
 
 public:
-    bool execute(HWND parent, const ezstring& title, const ezstring& message, const ezstring& text = ezstring());
-    ezstring text()const { return m_text; }
+    bool execute(HWND parent, const ezstring& title, const ezstring& message, const ezstring& text = ezstring())
+    {
+        int cx = GetSystemMetrics(SM_CXFULLSCREEN);
+        int cy = GetSystemMetrics(SM_CYFULLSCREEN);
+
+        int w = 400;
+        int h = 150;
+        int x = (cx - w) / 2;
+        int y = (cy - h) / 2;
+
+        m_message = message;
+        m_text = text;
+        ezWindow::create(L"EZGDI_InputBox", title.c_str(), x, y, w, h, WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS);
+
+        showModel(parent);
+
+        return m_result;
+    }
+
+    ezstring text()const
+    {
+        return m_text;
+    }
 
 protected:
-    void on_create();
-    void ButtonOKClick();
-    LRESULT wndproc(UINT msg, WPARAM wparam, LPARAM lparam);
-};
+    void on_create()
+    {
+        RECT rect;
+        GetClientRect(m_handle, &rect);
 
-bool ezInputBox::execute(HWND parent, const ezstring& title, const ezstring& message, const ezstring& text)
-{
-    int cx = GetSystemMetrics( SM_CXFULLSCREEN );
-    int cy = GetSystemMetrics( SM_CYFULLSCREEN );
+        lblMessage.create(this, 4, 5, rect.right - 80, 70);
+        lblMessage.setID(1000);
+        lblMessage.setText(m_message);
 
-    int w = 400;
-    int h = 150;
-    int x = (cx - w) / 2;
-    int y = (cy - h) / 2;
+        btnOK.create(this, rect.right - 70, 8, 64, 24);
+        btnOK.setID(IDOK);
+        btnOK.setDefault(true);
+        btnOK.setText(L"确定(&O)");
 
-    m_message = message;
-    m_text = text;
-    ezWindow::create(L"EZGDI_InputBox", title.c_str(), x, y, w, h, WS_CAPTION|WS_SYSMENU|WS_CLIPSIBLINGS);
+        btnCancel.create(this, rect.right - 70, 36, 64, 24);
+        btnCancel.setID(IDCANCEL);
+        btnCancel.setText(L"取消(&C)");
 
-    showModel(parent);
-
-    return m_result;
-}
-
-void ezInputBox::on_create()
-{
-    RECT rect;
-    GetClientRect(m_handle, &rect);
-
-    lblMessage.create(this, 4, 5, rect.right - 80, 70);
-    lblMessage.setID(1000);
-    lblMessage.setText(m_message);
-
-    btnOK.create(this, rect.right - 70, 8, 64, 24);
-    btnOK.setID(IDOK);
-    btnOK.setDefault(true);
-    btnOK.setText(L"确定(&O)");
-
-    btnCancel.create(this, rect.right - 70, 36, 64, 24);
-    btnCancel.setID(IDCANCEL);
-    btnCancel.setText(L"取消(&C)");
-
-    editbox.create(this, 4, rect.bottom - 24, rect.right - 8, 20);
-    editbox.setID(2000);
-    editbox.setText(m_text);
-    editbox.setMaxLength(128);
-}
-
-void ezInputBox::ButtonOKClick()
-{
-    TCHAR buf[256];
-    GetDlgItemText(m_handle, 2000, buf, 256);
-    m_text = buf;
-}
-
-LRESULT ezInputBox::wndproc(UINT msg, WPARAM wparam, LPARAM lparam)
-{
-    switch(msg){
-    case WM_CREATE:
-        on_create();
-        break;
-    case WM_DESTROY:
-        m_handle = NULL;
-        PostQuitMessage(0);
-        break;
-    case WM_KEYDOWN:
-        if (wparam == VK_RETURN){
-            SendMessage(m_handle, WM_COMMAND, IDOK, 0);
-        }
-        else if(wparam == VK_ESCAPE){
-            SendMessage(m_handle, WM_COMMAND, IDCANCEL, 0);
-        }
-        break;
-    case WM_CHAR:
-        SendDlgItemMessage(m_handle, 2000, msg, wparam, lparam);
-        break;
-    case WM_SETFOCUS:
-        SendDlgItemMessage(m_handle, 2000, WM_SETFOCUS, 0, 0);
-        break;
-    case WM_COMMAND:
-        switch(LOWORD(wparam)){
-        case IDOK:
-            ButtonOKClick();
-            DestroyWindow(m_handle);
-            m_result = true;
-            break;
-        case IDCANCEL:
-            DestroyWindow(m_handle);
-            m_result = false;
-            break;
-        };
-        break;
-    default:
-        break;
+        editbox.create(this, 4, rect.bottom - 24, rect.right - 8, 20);
+        editbox.setID(2000);
+        editbox.setText(m_text);
+        editbox.setMaxLength(128);
     }
-    return DefWindowProc(m_handle, msg, wparam, lparam);;
-}
+
+    void ButtonOKClick()
+    {
+        TCHAR buf[256];
+        GetDlgItemText(m_handle, 2000, buf, 256);
+        m_text = buf;
+    }
+
+    LRESULT wndproc(UINT msg, WPARAM wparam, LPARAM lparam)
+    {
+        switch (msg) {
+        case WM_CREATE:
+            on_create();
+            break;
+        case WM_DESTROY:
+            m_handle = NULL;
+            PostQuitMessage(0);
+            break;
+        case WM_KEYDOWN:
+            if (wparam == VK_RETURN) {
+                SendMessage(m_handle, WM_COMMAND, IDOK, 0);
+            }
+            else if (wparam == VK_ESCAPE) {
+                SendMessage(m_handle, WM_COMMAND, IDCANCEL, 0);
+            }
+            break;
+        case WM_CHAR:
+            SendDlgItemMessage(m_handle, 2000, msg, wparam, lparam);
+            break;
+        case WM_SETFOCUS:
+            SendDlgItemMessage(m_handle, 2000, WM_SETFOCUS, 0, 0);
+            break;
+        case WM_COMMAND:
+            switch (LOWORD(wparam)) {
+            case IDOK:
+                ButtonOKClick();
+                DestroyWindow(m_handle);
+                m_result = true;
+                break;
+            case IDCANCEL:
+                DestroyWindow(m_handle);
+                m_result = false;
+                break;
+            };
+            break;
+        default:
+            break;
+        }
+        return DefWindowProc(m_handle, msg, wparam, lparam);
+    }
+};
 
 //---------------------------------------------------------------------------
 //
@@ -724,7 +724,7 @@ EZ_PUBLIC_DECLARE ezapi::ezInstance<>& __ezgdi_instance = ezapi::ezInstance<>::i
 //
 //---------------------------------------------------------------------------
 
-int ezInit(const ezstring& title, int width, int height, int style)
+inline int ezInit(const ezstring& title, int width, int height, int style)
 {
     setlocale(LC_ALL, "");//c中文
     std::locale::global(std::locale(""));//c++中文
@@ -777,22 +777,22 @@ int ezInit(const ezstring& title, int width, int height, int style)
     return 0;
 }
 
-void ezClose()
+inline void ezClose()
 {
     SendMessage(__ezgdi_instance.handle(), WM_CLOSE, 0, 0);
 }
 
-HWND ezHWnd()
+inline HWND ezHWnd()
 {
     return __ezgdi_instance.handle();
 }
 
-void ezResize(int width, int height)
+inline void ezResize(int width, int height)
 {
     SetWindowPos(ezHWnd(), 0, 0, 0, width, height, SWP_NOMOVE|SWP_NOZORDER);
 }
 
-void ezClientResize(int width, int height)
+inline void ezClientResize(int width, int height)
 {
     HWND hwnd = ezHWnd();
     RECT rcWindow;
@@ -809,13 +809,13 @@ void ezClientResize(int width, int height)
 }
 
 //获得GDI绘图设备
-HDC ezHDC()
+inline HDC ezHDC()
 {
     return __ezgdi_instance.hdc;
 }
 
 //消息循环处理
-bool ezLoop()
+inline bool ezLoop()
 {
     MSG msg;
     while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)){
@@ -827,13 +827,13 @@ bool ezLoop()
 }
 
 //程序执行
-void ezRun()
+inline void ezRun()
 {
     while(ezLoop());
 }
 
 //显示fps
-void ezFps()
+inline void ezFps()
 {
     static DWORD t = GetTickCount();
     static int fps_total = 0;
@@ -855,7 +855,7 @@ void ezFps()
     }
 }
 
-std::basic_string<TCHAR> ezTempPath()
+inline std::basic_string<TCHAR> ezTempPath()
 {
     TCHAR buf[MAX_PATH];
     ::GetTempPath(MAX_PATH, buf);
@@ -869,45 +869,45 @@ std::basic_string<TCHAR> ezTempPath()
 //---------------------------------------------------------------------------
 
 //判断按键是否按下
-bool ezKeyState(int key)
+inline bool ezKeyState(int key)
 {
     return GetAsyncKeyState(key) & 0x8000;
 }
 
 //键盘事件映射
-void ezOnKeyUp(EZ_KEY_EVENT function)
+inline void ezOnKeyUp(EZ_KEY_EVENT function)
 {
     __ezgdi_instance.OnKeyDown = function;
 }
 
-void ezOnKeyDown(EZ_KEY_EVENT function)
+inline void ezOnKeyDown(EZ_KEY_EVENT function)
 {
     __ezgdi_instance.OnKeyDown= function;
 }
 
-void ezOnChar(EZ_KEY_EVENT function)
+inline void ezOnChar(EZ_KEY_EVENT function)
 {
     __ezgdi_instance.OnKeyPress = function;
 }
 
 //鼠标事件映射
-void ezOnMouseDown(EZ_MOUSE_EVENT function)
+inline void ezOnMouseDown(EZ_MOUSE_EVENT function)
 {
     __ezgdi_instance.OnMouseDown = function;
 }
 
-void ezOnMouseUp(EZ_MOUSE_EVENT function)
+inline void ezOnMouseUp(EZ_MOUSE_EVENT function)
 {
     __ezgdi_instance.OnMouseUp = function;
 }
 
-void ezOnMouseMove(EZ_MOUSE_EVENT function)
+inline void ezOnMouseMove(EZ_MOUSE_EVENT function)
 {
     __ezgdi_instance.OnMouseMove = function;
 }
 
 //设置计时器
-void ezTimer(UINT interval)
+inline void ezTimer(UINT interval)
 {
     if(interval){
         SetTimer(ezHWnd(), UINT(EZAPP_TIMER_ID), interval, NULL);
@@ -918,13 +918,13 @@ void ezTimer(UINT interval)
 }
 
 //计时器事件
-void ezOnTimer(EZ_TIMER_EVENT function)
+inline void ezOnTimer(EZ_TIMER_EVENT function)
 {
     __ezgdi_instance.OnTimer = function;
 }
 
 //窗口绘制事件
-void ezOnPaint(EZ_PAINT_EVENT function)
+inline void ezOnPaint(EZ_PAINT_EVENT function)
 {
     __ezgdi_instance.OnPaint = function;
 }
@@ -936,13 +936,13 @@ void ezOnPaint(EZ_PAINT_EVENT function)
 //---------------------------------------------------------------------------
 
 //获得GDI+绘图设备
-Gdiplus::Graphics* ezGraphics()
+inline Gdiplus::Graphics* ezGraphics()
 {
     return __ezgdi_instance.graphics;
 }
 
 //设置显示质量
-int ezEffectLevel(int level)
+inline int ezEffectLevel(int level)
 {
     if(!__ezgdi_instance.graphics){
         return -1;
@@ -977,29 +977,29 @@ int ezEffectLevel(int level)
 }
 
 //清屏
-void ezClear(BYTE r, BYTE g, BYTE b, BYTE a)
+inline void ezClear(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->Clear(Gdiplus::Color(a, r, g, b));
 }
 
 //更改画笔颜色
-void ezPenColor(BYTE r, BYTE g, BYTE b, BYTE a)
+inline void ezPenColor(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if(__ezgdi_instance.pen)__ezgdi_instance.pen->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
-void ezPenColor(DWORD argb)
+inline void ezPenColor(DWORD argb)
 {
     if(__ezgdi_instance.pen)__ezgdi_instance.pen->SetColor(Gdiplus::Color(argb));
 }
 
-void ezPenColor(vec4ub color)
+inline void ezPenColor(vec4ub color)
 {
     if(__ezgdi_instance.pen)__ezgdi_instance.pen->SetColor(Gdiplus::Color(color.a, color.r, color.g, color.b));
 }
 
 //获取画笔颜色
-DWORD ezPenColor()
+inline DWORD ezPenColor()
 {
     Gdiplus::Color color;
     if(__ezgdi_instance.pen){
@@ -1019,13 +1019,13 @@ vec4ub ezPenColor()
 */
 
 //画笔宽度
-void ezPenWidth(float width)
+inline void ezPenWidth(float width)
 {
     if(__ezgdi_instance.pen)__ezgdi_instance.pen->SetWidth(width);
 }
 
 //设置画笔模式
-void ezPenStyle(int mode)
+inline void ezPenStyle(int mode)
 {
     if(__ezgdi_instance.pen){
         //if(mode != EZ_CUSTOM){//取消自定义点画模式
@@ -1036,7 +1036,7 @@ void ezPenStyle(int mode)
 }
 
 //设置点画模式间隔
-void ezDashStyle(const float* dash, int size)
+inline void ezDashStyle(const float* dash, int size)
 {
     if(__ezgdi_instance.pen){
         //if(__ezgdi_instance.pen->GetDashStyle() == Gdiplus::DashStyleCustom){
@@ -1046,18 +1046,18 @@ void ezDashStyle(const float* dash, int size)
 }
 
 //更改填充颜色
-void ezFillColor(BYTE r, BYTE g, BYTE b, BYTE a)
+inline void ezFillColor(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if(__ezgdi_instance.brush)__ezgdi_instance.brush->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
-void ezFillColor(DWORD argb)
+inline void ezFillColor(DWORD argb)
 {
     if(__ezgdi_instance.brush)__ezgdi_instance.brush->SetColor(Gdiplus::Color(argb));
 }
 
 //获取填充颜色
-DWORD ezFillColor()
+inline DWORD ezFillColor()
 {
     Gdiplus::Color color;
     if(__ezgdi_instance.brush){
@@ -1067,7 +1067,7 @@ DWORD ezFillColor()
 }
 
 //绘制一个点
-void ezPoint(float x, float y, float size)
+inline void ezPoint(float x, float y, float size)
 {
     if(__ezgdi_instance.graphics){
         Gdiplus::SolidBrush brush(ezPenColor());
@@ -1077,25 +1077,25 @@ void ezPoint(float x, float y, float size)
 }
 
 //绘制线段
-void ezDrawLine(float x1, float y1, float x2, float y2)
+inline void ezDrawLine(float x1, float y1, float x2, float y2)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->DrawLine(__ezgdi_instance.pen, x1, y1, x2, y2);
 }
 
 //绘制一个空心矩形
-void ezDrawRect(float x, float y, float width, float height)
+inline void ezDrawRect(float x, float y, float width, float height)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->DrawRectangle(__ezgdi_instance.pen, x, y, width, height);
 }
 
 //填充一个矩形
-void ezFillRect(float x, float y, float width, float height)
+inline void ezFillRect(float x, float y, float width, float height)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->FillRectangle(__ezgdi_instance.brush, x, y, width, height);
 }
 
 //绘制圆角矩形
-void ezDrawRoundRect(float x, float y, float width, float height, float cx, float cy)
+inline void ezDrawRoundRect(float x, float y, float width, float height, float cx, float cy)
 {
     cx *= 2.0f;
     cy *= 2.0f;
@@ -1119,7 +1119,7 @@ void ezDrawRoundRect(float x, float y, float width, float height, float cx, floa
 }
 
 //填充圆角矩形
-void ezFillRoundRect(float x, float y, float width, float height, float cx, float cy)
+inline void ezFillRoundRect(float x, float y, float width, float height, float cx, float cy)
 {
     cx *= 2.0f;
     cy *= 2.0f;
@@ -1143,31 +1143,31 @@ void ezFillRoundRect(float x, float y, float width, float height, float cx, floa
 }
 
 //绘制椭圆，xy为圆心
-void ezDrawEllipse(float x, float y, float cx, float cy)
+inline void ezDrawEllipse(float x, float y, float cx, float cy)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->DrawEllipse(__ezgdi_instance.pen, x - cx * 0.5f, y - cy * 0.5f, cx, cy);
 }
 
 //填充椭圆
-void ezFillEllipse(float x, float y, float cx, float cy)
+inline void ezFillEllipse(float x, float y, float cx, float cy)
 {
     if(__ezgdi_instance.graphics)__ezgdi_instance.graphics->FillEllipse(__ezgdi_instance.brush, x - cx * 0.5f, y - cy * 0.5f, cx, cy);
 }
 
 //绘制空心圆，xy为圆心
-void ezDrawCircle(float x, float y, float r)
+inline void ezDrawCircle(float x, float y, float r)
 {
     return ezDrawEllipse(x, y, r, r);
 }
 
 //填充圆
-void ezFillCircle(float x, float y, float r)
+inline void ezFillCircle(float x, float y, float r)
 {
     return ezFillEllipse(x, y, r, r);
 }
 
 //绘制连续的线段
-void ezDrawPolyline(const vec2f* points, size_t size)
+inline void ezDrawPolyline(const vec2f* points, size_t size)
 {
     Gdiplus::Graphics *g = ezGraphics();
     if(g){
@@ -1176,7 +1176,7 @@ void ezDrawPolyline(const vec2f* points, size_t size)
 }
 
 //绘制多边形
-void ezDrawPolygon(const vec2f* points, size_t size)
+inline void ezDrawPolygon(const vec2f* points, size_t size)
 {
     Gdiplus::Graphics *g = ezGraphics();
     if(g){
@@ -1185,7 +1185,7 @@ void ezDrawPolygon(const vec2f* points, size_t size)
 }
 
 //填充多边形
-void ezFillPolygon(const vec2f* points, size_t size)
+inline void ezFillPolygon(const vec2f* points, size_t size)
 {
     Gdiplus::Graphics *g = ezGraphics();
     if(g){
@@ -1200,7 +1200,7 @@ void ezFillPolygon(const vec2f* points, size_t size)
 //---------------------------------------------------------------------------
 
 //设置字体。字体名字、大小、风格
-void ezFont(const ezstring& name, float size, EZGDI_FONTSTYLE style)
+inline void ezFont(const ezstring& name, float size, EZGDI_FONTSTYLE style)
 {
     if(__ezgdi_instance.font){
         delete __ezgdi_instance.font;
@@ -1208,19 +1208,19 @@ void ezFont(const ezstring& name, float size, EZGDI_FONTSTYLE style)
     }
 }
 
-void ezFontName(const ezstring& name)
+inline void ezFontName(const ezstring& name)
 {
     __ezgdi_instance.fontName = name;
     __ezgdi_instance.fontIsChange = true;
 }
 
-void ezFontSize(float size)
+inline void ezFontSize(float size)
 {
     __ezgdi_instance.fontSize = size;
     __ezgdi_instance.fontIsChange = true;
 }
 
-void ezFontStyle(int style)
+inline void ezFontStyle(int style)
 {
     __ezgdi_instance.fontStyle = style;
     __ezgdi_instance.fontIsChange = true;
@@ -1232,18 +1232,18 @@ void ezFontStyle(int style)
 //int font_style();
 
 //字体颜色
-void ezFontColor(BYTE r, BYTE g, BYTE b, BYTE a)
+inline void ezFontColor(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if(__ezgdi_instance.font_color)__ezgdi_instance.font_color->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
-void ezFontColor(UINT color)
+inline void ezFontColor(UINT color)
 {
     if(__ezgdi_instance.font_color)__ezgdi_instance.font_color->SetColor(Gdiplus::Color(color));
 }
 
 //输出字体
-void ezText(float x, float y, const wchar_t* text, size_t length)
+inline void ezText(float x, float y, const wchar_t* text, size_t length)
 {
     if(__ezgdi_instance.graphics){
         if(__ezgdi_instance.fontIsChange){
@@ -1257,12 +1257,12 @@ void ezText(float x, float y, const wchar_t* text, size_t length)
     }
 }
 
-void ezText(float x, float y, const ezstring& text)
+inline void ezText(float x, float y, const ezstring& text)
 {
     return ezText(x, y, text.c_str(), text.length());
 }
 
-void ezText(float x, float y, float width, float height, const ezstring& text, int align)
+inline void ezText(float x, float y, float width, float height, const ezstring& text, int align)
 {
     if(__ezgdi_instance.graphics){
         if(__ezgdi_instance.fontIsChange){
@@ -1301,7 +1301,7 @@ void ezText(float x, float y, float width, float height, const ezstring& text, i
 }
 
 //字体格式化输出，和printf使用类似
-void ezPrint(float x, float y, const wchar_t* format, ...)
+inline void ezPrint(float x, float y, const wchar_t* format, ...)
 {
 	va_list body;
 	wchar_t buf[1024] = { 0 };
@@ -1316,7 +1316,7 @@ void ezPrint(float x, float y, const wchar_t* format, ...)
 }
 
 //获得字符串的像素宽度
-float ezTextWidth(const ezstring& text)
+inline float ezTextWidth(const ezstring& text)
 {
     if(__ezgdi_instance.graphics){
         Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
@@ -1328,7 +1328,7 @@ float ezTextWidth(const ezstring& text)
 }
 
 //获得字符串的像素高度
-float ezTextHeight(const ezstring& text)
+inline float ezTextHeight(const ezstring& text)
 {
     if(__ezgdi_instance.graphics){
         Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
@@ -1345,22 +1345,22 @@ float ezTextHeight(const ezstring& text)
 //
 //---------------------------------------------------------------------------
 
-ezImage::ezImage() : m_handle()
+inline ezImage::ezImage() : m_handle()
 {
 }
 
-ezImage::~ezImage()
+inline ezImage::~ezImage()
 {
     this->close();
 }
 
-Gdiplus::Bitmap* ezImage::handle()const
+inline Gdiplus::Bitmap* ezImage::handle()const
 {
     return m_handle;
 }
 
 //创建一个图片，默认为32位色
-int ezImage::create(int width, int height, int format)
+inline int ezImage::create(int width, int height, int format)
 {
     this->close();
     m_handle = new Gdiplus::Bitmap(width, height, format);
@@ -1368,7 +1368,7 @@ int ezImage::create(int width, int height, int format)
 }
 
 //打开一个图片，支持bmp、jpg、png、静态gif等常见格式
-int ezImage::open(const ezstring& filename)
+inline int ezImage::open(const ezstring& filename)
 {
     this->close();
     Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(filename.c_str());
@@ -1381,7 +1381,7 @@ int ezImage::open(const ezstring& filename)
 }
 
 //从资源中加载图片
-Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
+inline Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
 {
 	Gdiplus::Bitmap* image = NULL;
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -1421,7 +1421,7 @@ Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
 }
 
 //打开资源中的图片
-int ezImage::open(int id, PCTSTR resource_type)
+inline int ezImage::open(int id, PCTSTR resource_type)
 {
     this->close();
     Gdiplus::Bitmap* bmp  = LoadResourceImage(id, resource_type);
@@ -1434,7 +1434,7 @@ int ezImage::open(int id, PCTSTR resource_type)
 }
 
 //映射一个HBITMAP对象
-int ezImage::map(HBITMAP hbmp)
+inline int ezImage::map(HBITMAP hbmp)
 {
     this->close();
     BITMAP bm;
@@ -1453,7 +1453,7 @@ EZ_PUBLIC_DECLARE const wchar_t* GDIPLUS_IMAGE_GIF  = L"image/gif";
 EZ_PUBLIC_DECLARE const wchar_t* GDIPLUS_IMAGE_TIFF = L"image/tiff";
 EZ_PUBLIC_DECLARE const wchar_t* GDIPLUS_IMAGE_PNG  = L"image/png";
 
-int GetImageCLSID(const WCHAR* format, CLSID* pCLSID)
+inline int GetImageCLSID(const WCHAR* format, CLSID* pCLSID)
 {
     //得到格式为format的图像文件的编码值，访问该格式图像的COM组件的GUID值保存在pCLSID中
     UINT num  = 0;
@@ -1485,7 +1485,7 @@ int GetImageCLSID(const WCHAR* format, CLSID* pCLSID)
     return -3;
 }
 
-int ezImage::save(const ezstring& filename)
+inline int ezImage::save(const ezstring& filename)
 {
     if(m_handle){
         CLSID id;
@@ -1498,7 +1498,7 @@ int ezImage::save(const ezstring& filename)
 }
 
 //自动释放图片
-void ezImage::close()
+inline void ezImage::close()
 {
     if(m_handle){
         delete m_handle;
@@ -1507,30 +1507,30 @@ void ezImage::close()
 }
 
 //返回图片的宽度
-int ezImage::width()const
+inline int ezImage::width()const
 {
     return m_handle ? m_handle->GetWidth() : 0;
 }
 
 //返回图片的高度
-int ezImage::height()const
+inline int ezImage::height()const
 {
     return m_handle ? m_handle->GetHeight() : 0;
 }
 
 
 
-ezImage* ezLoadImage(const ezstring& filename)
+inline ezImage* ezLoadImage(const ezstring& filename)
 {
     return __ezgdi_instance.resource.loadimage(filename);
 }
 
-ezImage* ezLoadImage(int id, PCTSTR resource_type)
+inline ezImage* ezLoadImage(int id, PCTSTR resource_type)
 {
     return __ezgdi_instance.resource.loadimage(id, resource_type);
 }
 
-int ezSaveImage(ezImage* image, const ezstring& filename)
+inline int ezSaveImage(ezImage* image, const ezstring& filename)
 {
     if(image){
         image->save(filename);
@@ -1538,24 +1538,24 @@ int ezSaveImage(ezImage* image, const ezstring& filename)
     return -1;
 }
 
-void ezDraw(ezImage* image, float x, float y)
+inline void ezDraw(ezImage* image, float x, float y)
 {
     if(__ezgdi_instance.graphics && image && image->handle())__ezgdi_instance.graphics->DrawImage(image->handle(), x, y);
 }
 
-void ezDraw(ezImage* image, float x, float y, float width, float height)
+inline void ezDraw(ezImage* image, float x, float y, float width, float height)
 {
     if(__ezgdi_instance.graphics && image && image->handle())__ezgdi_instance.graphics->DrawImage(image->handle(), x, y, width, height);
 }
 
 //在xy位置绘制图片，并旋转一个角度
-void ezRotateImage(ezImage* image, float x, float y, float rotate)
+inline void ezRotateImage(ezImage* image, float x, float y, float rotate)
 {
     return ezRotateImage(image, x, y, float(image->width()), float(image->height()), rotate);
 }
 
 //在xy位置绘制图片，缩放，并旋转一个角度
-void ezRotateImage(ezImage* image, float x, float y, float width, float height, float rotate)
+inline void ezRotateImage(ezImage* image, float x, float y, float width, float height, float rotate)
 {
     if(__ezgdi_instance.graphics && image){
         Gdiplus::Graphics* g = __ezgdi_instance.graphics;
@@ -1578,7 +1578,7 @@ void ezRotateImage(ezImage* image, float x, float y, float width, float height, 
 //---------------------------------------------------------------------------
 
 //播放音乐
-void ezPlayMusic(PCTSTR filename)
+inline void ezPlayMusic(PCTSTR filename)
 {
 	ezstring command = L"open ";
 	command.append((const wchar_t*)filename);
@@ -1588,7 +1588,7 @@ void ezPlayMusic(PCTSTR filename)
     mciSendString(TEXT("play background repeat"), NULL, 0, NULL);
 }
 
-void ezStopMusic()
+inline void ezStopMusic()
 {
     mciSendString(TEXT("stop background"), NULL, 0, NULL);//!
 	mciSendString(TEXT("close background"), NULL, 0, NULL);
@@ -1596,7 +1596,7 @@ void ezStopMusic()
 
 //导出资源到文件
 //参考文章：https://www.cnblogs.com/zjutlitao/p/3577592.html
-bool ExtractResource(LPCTSTR filename, LPCTSTR resource_type, LPCTSTR resource_name)
+inline bool ExtractResource(LPCTSTR filename, LPCTSTR resource_type, LPCTSTR resource_name)
 {
     // 创建文件
     HANDLE hFile = ::CreateFile(filename, GENERIC_WRITE, NULL, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, NULL);
@@ -1618,7 +1618,7 @@ bool ExtractResource(LPCTSTR filename, LPCTSTR resource_type, LPCTSTR resource_n
 }
 
 //播放资源中的音乐
-void ezPlayResourceMusic(PCTSTR filename, PCTSTR resource_type)
+inline void ezPlayResourceMusic(PCTSTR filename, PCTSTR resource_type)
 {
 	std::basic_string<TCHAR> tempfile = ezTempPath();
     tempfile += TEXT("background.mp3");
@@ -1627,13 +1627,13 @@ void ezPlayResourceMusic(PCTSTR filename, PCTSTR resource_type)
 	ezPlayResourceMusic(tempfile.c_str());
 }
 
-void ezPlayResourceMusic(int id, PCTSTR resource_type)
+inline void ezPlayResourceMusic(int id, PCTSTR resource_type)
 {
 	return ezPlayResourceMusic(MAKEINTRESOURCE(id), resource_type);
 }
 
 //播放wav文件
-int ezPlaySound(PCTSTR filename, bool loop)
+inline int ezPlaySound(PCTSTR filename, bool loop)
 {
     DWORD fdwSound = SND_FILENAME|SND_ASYNC;
     if(loop)fdwSound |= SND_LOOP;
@@ -1641,20 +1641,20 @@ int ezPlaySound(PCTSTR filename, bool loop)
 }
 
 //播放资源中的wav文件
-int ezPlayResourceSound(PCTSTR filename, bool loop)
+inline int ezPlayResourceSound(PCTSTR filename, bool loop)
 {
     DWORD fdwSound = SND_RESOURCE|SND_ASYNC;
     if(loop)fdwSound |= SND_LOOP;
     return PlaySound(filename, GetModuleHandle(NULL), fdwSound);
 }
 
-int ezPlayResourceSound(int id, bool loop)
+inline int ezPlayResourceSound(int id, bool loop)
 {
     return ezPlayResourceSound(MAKEINTRESOURCE(id), loop);
 }
 
 //停止声音播放
-void ezStopSound()
+inline void ezStopSound()
 {
 	PlaySound(NULL, NULL, SND_FILENAME);
 }
@@ -1666,19 +1666,19 @@ void ezStopSound()
 //---------------------------------------------------------------------------
 
 //消息对话框
-int ezMsgBox(const ezstring& msg, const ezstring& title, int type)
+inline int ezMsgBox(const ezstring& msg, const ezstring& title, int type)
 {
 	return MessageBoxW(ezHWnd(), msg.c_str(), title.c_str(), type);
 }
 
 //显示消息
-void ezMessage(const ezstring& msg)
+inline void ezMessage(const ezstring& msg)
 {
     MessageBoxW(ezHWnd(), msg.c_str(), L"消息", MB_OK);
 }
 
 //显示输入框
-ezstring ezInputBox(const ezstring& title, const ezstring& message, const ezstring value)
+inline ezstring ezInputBox(const ezstring& title, const ezstring& message, const ezstring value)
 {
     ezapi::ezInputBox box;
     if(box.execute(ezHWnd(), title, message, value)){
