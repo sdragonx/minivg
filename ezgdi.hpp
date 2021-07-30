@@ -13,13 +13,17 @@
 #ifndef EZGDI_HPP
 #define EZGDI_HPP
 
-#ifndef UNICODE
-  #error UNICODE can not defined.
-#endif
-
-#ifndef _UNICODE
-  #define _UNICODE
-#endif
+//#ifndef UNICODE
+//  #error UNICODE can not defined.
+//#endif
+//
+//#ifndef UNICODE
+//  #define UNICODE
+//#endif
+//
+//#ifndef _UNICODE
+//  #define _UNICODE
+//#endif
 
 #ifndef NO_WIN32_LEAN_AND_MEAN
   #define NO_WIN32_LEAN_AND_MEAN
@@ -58,13 +62,14 @@
  *                                                                          *
  ****************************************************************************/
 
-//enum常量
+// enum常量
 enum{
     EZ_NULL,
 
-    EZ_FIXED,                               //固定大小
-    EZ_SIZEABLE,                            //可缩放
-    EZ_FULLSCREEN,                          //全屏
+    EZ_FIXED = 1,                           //固定大小
+    EZ_SIZEABLE = 2,                        //可缩放
+    EZ_FULLSCREEN = 4,                      //全屏
+    EZ_BACKBUFFER = 8,                      //不创建窗口
 
     EZ_LEFT   = 1,                          //左
     EZ_RIGHT  = 2,                          //右
@@ -83,19 +88,19 @@ enum{
     EZ_ERROR = -1,
 };
 
-//byte_t类型
+// byte_t类型
 typedef uint8_t byte_t;
 
-//键盘事件
+// 键盘事件
 typedef void (*EZ_KEY_EVENT)(int key);
 
-//鼠标事件
+// 鼠标事件
 typedef void (*EZ_MOUSE_EVENT)(int x, int y, int button);
 
-//计时器事件
+// 计时器事件
 typedef void (*EZ_TIMER_EVENT)();
 
-//窗口绘制事件
+// 窗口绘制事件
 typedef void (*EZ_PAINT_EVENT)();
 
 /****************************************************************************
@@ -104,7 +109,7 @@ typedef void (*EZ_PAINT_EVENT)();
  *                                                                          *
  ****************************************************************************/
 
-//字符串转其他类型
+// 字符串转其他类型
 template<typename T, typename _char_t>
 inline T string_cast(const std::basic_string<_char_t>& str)
 {
@@ -114,7 +119,7 @@ inline T string_cast(const std::basic_string<_char_t>& str)
     return n;
 }
 
-//其他类型转字符串
+// 其他类型转字符串
 template<typename _char_t, typename T>
 std::basic_string<_char_t> to_string(const T& value)
 {
@@ -123,7 +128,17 @@ std::basic_string<_char_t> to_string(const T& value)
     return stm.str();
 }
 
-//ansi to unicode
+// unicode to ansi
+inline std::string to_ansi(const wchar_t* str, int length)
+{
+    std::vector<char> buf;
+    int n = WideCharToMultiByte(CP_OEMCP, 0, str, length, NULL, 0, NULL, FALSE);
+    buf.resize(n);
+    WideCharToMultiByte(CP_OEMCP, 0, str, length, &buf[0], n, NULL, FALSE);
+    return std::string(&buf[0], n);
+}
+
+// ansi to unicode
 inline std::wstring to_unicode(const char* str, int length)
 {
     std::vector<wchar_t> buf;
@@ -133,35 +148,40 @@ inline std::wstring to_unicode(const char* str, int length)
     return std::wstring(&buf[0], n);
 }
 
-class ezstring : public std::wstring
+class unistring : public std::wstring
 {
 public:
-    ezstring() : std::wstring() { }
-    ezstring(const char* str) : std::wstring() { assign(str, strlen(str)); }
-    ezstring(const char* str, size_t size) : std::wstring() { assign(str, size); }
-    ezstring(const wchar_t* str) : std::wstring(str) { }
-    ezstring(const wchar_t* str, size_t size) : std::wstring(str, size) { }
+    unistring() : std::wstring() { }
+    unistring(const char* str) : std::wstring() { assign(str, strlen(str)); }
+    unistring(const char* str, size_t size) : std::wstring() { assign(str, size); }
+    unistring(const std::string& str) : std::wstring() { assign(str.c_str(), str.length()); }
 
-    //整数转字符串
-    ezstring(int n) : std::wstring(to_string<wchar_t>(n)) { }
+    unistring(const wchar_t* str) : std::wstring(str) { }
+    unistring(const wchar_t* str, size_t size) : std::wstring(str, size) { }
+    unistring(const std::wstring& str) : std::wstring(str) { }
 
-    //单实数转字符串
-    ezstring(float n) : std::wstring(to_string<wchar_t>(n)) { }
+    // 整数转字符串
+    unistring(int n) : std::wstring(to_string<wchar_t>(n)) { }
 
-    //双实数转字符串
-    ezstring(double n) : std::wstring(to_string<wchar_t>(n)) { }
+    // 单实数转字符串
+    unistring(float n) : std::wstring(to_string<wchar_t>(n)) { }
 
-    //复制构造
-    ezstring(const ezstring& str) : std::wstring(str.c_str(), str.length()) { }
+    // 双实数转字符串
+    unistring(double n) : std::wstring(to_string<wchar_t>(n)) { }
+
+    // 复制构造
+    unistring(const unistring& str) : std::wstring(str.c_str(), str.length()) { }
 
     using std::wstring::assign;
-    ezstring& assign(const char* str, size_t size = -1)
+
+    // 多字符字符串赋值
+    unistring& assign(const char* str, size_t size = -1)
     {
         std::vector<wchar_t> buf;
         int n = MultiByteToWideChar(CP_ACP, 0, str, int(size), NULL, 0);
         buf.resize(n);
         MultiByteToWideChar(CP_ACP, 0, str, int(size), &buf[0], n);
-        std::wstring::assign(&buf[0], n);
+        std::wstring::assign(buf.begin(), buf.end());
         return *this;
     }
 
@@ -186,30 +206,30 @@ public:
   #define M_INV_RD  57.295779513082320876798  //弧度的倒数(reciprocal) 1.0/M_RD
 #endif
 
-//判断数值是否是0
+// 判断数值是否是0
 template<typename T>inline bool is_zero(T n) { return n == 0; };
 template<>inline bool is_zero<float>(float n) { return n < 0.0 ? (n > -FLT_EPSILON) : (n < FLT_EPSILON); }
 template<>inline bool is_zero<double>(double n) { return n < 0.0 ? (n > -DBL_EPSILON) : (n < DBL_EPSILON); }
 
-//判断数值是否相等
+// 判断数值是否相等
 template<typename T>
 inline bool is_equal(T a, T b) { return is_zero(a - b); }
 
-//产生0 ~ n之间的随机数
+// 产生0 ~ n之间的随机数
 #ifdef _MSC_VER
 inline int random(int n) { return rand() % n; }
 #endif
 
-//产生0 ~ 1之间的随机浮点数
+// 产生0 ~ 1之间的随机浮点数
 inline double rand_real() { return double(rand()) / RAND_MAX; }
 
-//产生minVal ~ maxVal之间的随机浮点数
+// 产生minVal ~ maxVal之间的随机浮点数
 inline double rand_real(double minVal, double maxVal)
 {
     return minVal + (maxVal - minVal) * rand_real();
 }
 
-//获得向量的弧度
+// 获得向量的弧度
 inline double radian(double x, double y)
 {
     double n = 0.0;
@@ -220,13 +240,13 @@ inline double radian(double x, double y)
     return n;
 }
 
-//通过xy获得角度
-inline double get_angle(double x, double y)
+// 通过xy获得角度
+inline double angle(double x, double y)
 {
     return radian(x, y) * M_INV_RD;
 }
 
-//从source递进到dest，步长为speed
+// 从 source 递进到 dest，步长为 speed
 template<typename T>
 T step(T source, T dest, T speed)
 {
@@ -356,9 +376,9 @@ class vec4
 {
 public:
     union{
-        struct{ T x, y, z, w; }; //空间坐标
-        struct{ T r, g, b, a; }; //颜色分量
-        struct{ T _x, _y, width, height; }; //矩形
+        struct{ T x, y, z, w; }; // 空间坐标
+        struct{ T b, g, r, a; }; // 颜色分量 (GDI 使用的是 BGRA)
+        struct{ T _x, _y, width, height; }; // 矩形
     };
 
     vec4() : x(), y(), z(), w() { }
@@ -398,6 +418,7 @@ class ezImage
 {
 public:
     Gdiplus::Bitmap* m_handle;
+    Gdiplus::BitmapData* m_data;
 
 public:
     ezImage();
@@ -405,29 +426,35 @@ public:
 
     Gdiplus::Bitmap* handle()const;
 
-    //创建一个图片，默认为32位色
+    // 创建一个图片，默认为32位色
     int create(int width, int height, int format = PixelFormat32bppARGB);
 
-    //打开一个图片，支持bmp、jpg、png、静态gif等常见格式
-    int open(const ezstring& filename);
+    // 打开一个图片，支持 bmp、jpg、png、静态gif 等常见格式
+    int open(const unistring& filename);
 
-    //打开资源中的图片
+    // 打开资源中的图片
     int open(int id, PCTSTR resource_type = TEXT("BITMAP"));
 
-    //映射一个HBITMAP对象
+    // 映射一个 HBITMAP 对象
     int map(HBITMAP hbmp);
 
-    //保存图片
-    int save(const ezstring& filename);
+    // 保存图片
+    int save(const unistring& filename);
 
-    //自动释放图片
+    // 自动释放图片
     void close();
 
-    //返回图片的宽度
+    // 返回图片的宽度
     int width()const;
 
-    //返回图片的高度
+    // 返回图片的高度
     int height()const;
+
+    // 获取图像数据
+    void* lock();
+
+    // 还原图像数据
+    void unlock();
 };
 
 /****************************************************************************
@@ -441,83 +468,93 @@ public:
 示例代码1：
 int main(int argc, char* argv[])
 {
-    //初始化库，创建窗口
-    ezInit("窗口标题", 800, 600);
+    // 初始化库，创建窗口
+    initgraph("窗口标题", 800, 600);
 
-    while(ezLoop()){
+    while(do_events()){
       //TODO : 输入绘图代码
 
     }
-
-    //退出时清理资源
-    ezClose();
 }
 
 示例代码2：
-void MyPaint();
+void display();
 
 int main(int argc, char* argv[])
 
 
-    //初始化库，创建窗口
-    ezInit("窗口标题", 800, 600);
+    // 初始化库，创建窗口
+    initgraph("窗口标题", 800, 600);
 
-    //设置绘图事件函数
-    ezOnPaint(MyPaint);
+    // 设置绘图事件函数
+    display_event(display);
 
-    //主进程执行函数
-    ezRun();
-
-    //退出时清理资源
-    ezClose();
+    // 主进程执行函数
+    return start_app();
 }
 
-void MyPaint()
+void display()
 {
     //TODO : 输入绘图代码
 }
 
 ***/
 
-//图形库初始化
-int ezInit(
-    const ezstring& title,  //窗口标题
-    int width,              //窗口宽度
-    int height,             //窗口高度
-    int style               //窗口样式 EZ_FIXED 固定大小；EZ_SIZEABLE 可缩放；EZ_FULLSCREEN 全屏
-    );
+/* 图形库初始化
+ * title            窗口标题
+ * width            窗口宽度
+ * height           窗口高度
+ * param            参数：
+ *                      EZ_FIXED        固定大小
+ *                      EZ_SIZEABLE     可缩放
+ *                      EZ_FULLSCREEN   全屏
+ *                      EZ_BUFFER       只创建绘图缓冲区，不创建窗口
+ */
+int initgraph(int width, int height, int param = EZ_FIXED);
+int initgraph(const unistring& title, int width, int height, int param = EZ_FIXED);
 
-//图形库关闭
-void ezClose();
+/* 在已有的窗口界面上初始化。
+ * 可以和vcl、mfc，或者其他界面库协同使用。（貌似只有顶层窗口能实现效果）
+ * hwnd             要初始化的窗口句柄
+ */
+int initgraph(HWND hwnd);
 
-//获得主窗口句柄
-HWND ezHWnd();
 
-//重新设置窗口大小
-void ezResize(
-    int width,              //窗口宽度
-    int height              //窗口高度
-    );
+/* 图形库关闭
+ */
+void quit();
 
-//设置窗口客户去大小
-void ezClientResize(
-    int width,              //客户区宽度
-    int height              //客户区高度
-    );
+/* 获得主窗口句柄
+ */
+HWND graph_window();
 
-//窗口全屏
-void ezFullScreen(
-    bool value              //true 全屏；false 取消全屏
-    );
+/* 获取 GDI 绘图设备
+ */
+HDC graph_hdc();
 
-//获得GDI绘图设备
-HDC ezHDC();
+/* 设置窗口标题
+ * text             标题
+ */
+void set_title(const unistring& text);
 
-//消息循环处理
-bool ezLoop();
+/* 重新设置窗口大小（客户区大小）
+ * width            窗口宽度
+ * height           窗口高度
+ */
+void reshape(int width, int height);
 
-//主进程执行函数
-void ezRun();
+/* 窗口全屏
+ * value    true 全屏；false 取消全屏
+ */
+void fullscreen(bool value);
+
+/* 消息循环处理
+ */
+bool do_events();
+
+/* 主进程执行函数
+ */
+int start_app();
 
 /****************************************************************************
  *                                                                          *
@@ -535,28 +572,36 @@ void ezRun();
  * VK_DOWN          下方向键
  * VK_SPACE         空格
  */
-bool ezKeyState(int key);
+bool keystate(int key);
 
-//键盘事件映射
-void ezOnKeyUp(EZ_KEY_EVENT function);
-void ezOnKeyDown(EZ_KEY_EVENT function);
-void ezOnChar(EZ_KEY_EVENT function);
+/* 键盘事件映射
+ */
+void key_push_event(EZ_KEY_EVENT function);
+void key_pop_event(EZ_KEY_EVENT function);
+void input_event(EZ_KEY_EVENT function);
 
-//鼠标事件映射
-void ezOnMouseMove(EZ_MOUSE_EVENT function);
-void ezOnMouseDown(EZ_MOUSE_EVENT function);
-void ezOnMouseUp(EZ_MOUSE_EVENT function);
+/* 鼠标事件映射
+ */
+void mouse_push_event(EZ_MOUSE_EVENT function);
+void mouse_pop_event(EZ_MOUSE_EVENT function);
+void mouse_move_event(EZ_MOUSE_EVENT function);
 
-//设置计时器
-void ezTimer(
-    UINT interval       //计时器时间间隔，单位毫秒，输入0停止计时器
-    );
+/* 设置计时器
+ * interval //计时器时间间隔，单位毫秒，输入 0 停止计时器
+ */
+void start_timer(UINT interval);
 
-//计时器事件
-void ezOnTimer(EZ_TIMER_EVENT function);
+/* 关闭计时器
+ */
+void stop_timer();
 
-//窗口绘制事件
-void ezOnPaint(EZ_PAINT_EVENT function);
+/* 计时器事件
+ */
+void timer_event(EZ_TIMER_EVENT function);
+
+/* 窗口绘制事件
+ */
+void display_event(EZ_PAINT_EVENT function);
 
 /****************************************************************************
  *                                                                          *
@@ -564,94 +609,167 @@ void ezOnPaint(EZ_PAINT_EVENT function);
  *                                                                          *
  ****************************************************************************/
 
-//获得GDI+绘图设备
-Gdiplus::Graphics* ezGraphics();
+/* 获得 GDI+ 绘图设备
+ */
+Gdiplus::Graphics* graphics();
 
-//设置显示质量
+/* 重设背景缓冲区大小位置
+ *
+ */
+void viewport(int x, int y, int width, int height);
+
+/* 背景缓冲绘制到目标 HDC
+ */
+void framebuf_blt(HDC hdc);
+
+/* 设置显示质量
+ */
 enum {
     EZ_SPEED,   //速度优先
     EZ_MEDIUM,  //中等质量
     EZ_QUALITY, //质量优先
 };
 
-int ezEffectLevel(int level);
+int effect_level(int level);
 
-//清屏
-void ezClear(BYTE r, BYTE g, BYTE b, BYTE a = 255);
+/* 清屏
+ */
+void clear(BYTE r, BYTE g, BYTE b, BYTE a = 255);
 
-//更改画笔颜色
-void ezPenColor(BYTE r, BYTE g, BYTE b, BYTE a = 255);
-void ezPenColor(DWORD argb);
+/* 更改画笔颜色
+ * r                红色分量
+ * g                绿色分量
+ * b                蓝色分量
+ * a                透明度
+ */
+void pen_color(BYTE r, BYTE g, BYTE b, BYTE a = 255);
+void pen_color(COLORREF argb);
+void pen_color(vec4ub color);
 
-//获取画笔颜色
-DWORD ezPenColor();
+/* 获取画笔颜色
+ */
+COLORREF pen_color();
 
-//画笔宽度
-void ezPenWidth(float width);
+/* 画笔宽度
+ */
+void pen_width(float width);
 
-//画笔模式
+/* 画笔模式
+ */
 enum{
-    EZ_SOLID,       //实心画笔（默认）
+    EZ_SOLID,       // 实心画笔（默认）
     EZ_DASH,        // -------
     EZ_DOT,         // .......
     EZ_DASH_DOT,    // -.-.-.-
-    EZ_CUSTOM = 5   //自定义
+    EZ_CUSTOM = 5   // 自定义
 };
 
-//设置画笔模式
-void ezPenStyle(int mode);
+/* 设置画笔模式
+ */
+void pen_style(int mode);
 
-//设置点画模式间隔
-void ezDashStyle(
-    const float* dash,      //点画模式间隔，浮点数数组
-    int size                //浮点数数组大小
-    );
+/* 设置点画模式间隔，由一组浮点数代表点画模式的宽度。
+ * dash             点画模式间隔，浮点数数组
+ * size             浮点数数组大小
+ */
+void dash_style(const float* dash, int size);
 
-//更改填充颜色
-void ezFillColor(BYTE r, BYTE g, BYTE b, BYTE a = 255);
-void ezFillColor(DWORD argb);
+/* 更改填充颜色
+ * r                红色分量
+ * g                绿色分量
+ * b                蓝色分量
+ * a                透明度
+ */
+void fill_color(BYTE r, BYTE g, BYTE b, BYTE a = 255);
+void fill_color(COLORREF argb);
 
-//获取填充颜色
-DWORD ezFillColor();
+/* 获取填充颜色
+ */
+COLORREF fill_color();
 
-//绘制一个点
-void ezPoint(float x, float y);
+/* 绘制一个点
+ * x                x 方向坐标
+ * y                y 方向坐标
+ */
+void draw_point(float x, float y);
 
-//绘制线段
-void ezDrawLine(float x1, float y1, float x2, float y2);
+/* 绘制线段
+ * x1, y1           第一个点
+ * x2, y2           第二个点
+ */
+void draw_line(float x1, float y1, float x2, float y2);
 
-//绘制一个空心矩形
-void ezDrawRect(float x, float y, float width, float height);
+/* 绘制一个空心矩形
+ * x, y             左上角坐标
+ * width            矩形宽度
+ * height           矩形高度
+ */
+void draw_rect(float x, float y, float width, float height);
 
-//填充一个矩形
-void ezFillRect(float x, float y, float width, float height);
+/* 填充一个矩形
+ * x, y             左上角坐标
+ * width            矩形宽度
+ * height           矩形高度
+ */
+void fill_rect(float x, float y, float width, float height);
 
-//绘制圆角矩形
-void ezDrawRoundRect(float x, float y, float width, float height, float cx, float cy);
+/* 绘制圆角矩形
+ * x, y             左上角坐标
+ * width            矩形宽度
+ * height           矩形高度
+ * cx, cy           圆角圆形大小
+ */
+void draw_roundrect(float x, float y, float width, float height, float cx, float cy);
 
-//填充圆角矩形
-void ezFillRoundRect(float x, float y, float width, float height, float cx, float cy);
+/* 填充圆角矩形
+ * x, y             左上角坐标
+ * width            矩形宽度
+ * height           矩形高度
+ * cx, cy           圆角圆形大小
+ */
+void fill_roundrect(float x, float y, float width, float height, float cx, float cy);
 
-//绘制空心椭圆，xy为圆心
-void ezDrawEllipse(float x, float y, float cx, float cy);
+/* 绘制空心椭圆
+ * x, y             圆心坐标
+ * cx, cy           椭圆的横向半径和纵向半径
+ */
+void draw_ellipse(float x, float y, float cx, float cy);
 
-//填充椭圆
-void ezFillEllipse(float x, float y, float cx, float cy);
+/* 填充椭圆
+ * x, y             圆心坐标
+ * cx, cy           椭圆的横向半径和纵向半径
+ */
+void fill_ellipse(float x, float y, float cx, float cy);
 
-//绘制空心圆，xy为圆心
-void ezDrawCircle(float x, float y, float r);
+/* 绘制空心圆，xy为圆心
+ * x, y             圆心坐标
+ * r                圆半径
+ */
+void draw_circle(float x, float y, float r);
 
-//填充圆
-void ezFillCircle(float x, float y, float r);
+/* 绘制空心圆，xy为圆心
+ * x, y             圆心坐标
+ * r                圆半径
+ */
+void fill_circle(float x, float y, float r);
 
-//绘制连续的线段
-void ezDrawPolyline(const vec2f* points, size_t size);
+/* 绘制连续的线段
+ * points           点数组
+ * size             点数组大小
+ */
+void draw_polyline(const vec2f* points, size_t size);
 
-//绘制多边形
-void ezDrawPolygon(const vec2f* points, size_t size);
+/* 绘制多边形
+ * points           点数组
+ * size             点数组大小
+ */
+void draw_polygon(const vec2f* points, size_t size);
 
-//填充多边形
-void ezFillPolygon(const vec2f* points, size_t size);
+/* 填充多边形
+ * points               点数组
+ * size             点数组大小
+ */
+void fill_polygon(const vec2f* points, size_t size);
 
 /****************************************************************************
  *                                                                          *
@@ -659,7 +777,8 @@ void ezFillPolygon(const vec2f* points, size_t size);
  *                                                                          *
  ****************************************************************************/
 
-//字体样式，可以随意组合
+/* 字体样式，可以随意组合
+ */
 enum EZGDI_FONTSTYLE{
     EZ_NORMAL       = 0,    //普通字体
     EZ_BOLD         = 1,    //粗体
@@ -668,37 +787,65 @@ enum EZGDI_FONTSTYLE{
     EZ_STRIKEOUT    = 8     //删除线
 };
 
-//设置字体。字体名字、大小、风格
-void ezFont(const ezstring& name, float size, EZGDI_FONTSTYLE style = EZ_NORMAL);
+/* 设置字体
+ * name             字体名称
+ * size             字体大小
+ * style            字体样式，EZGDI_FONTSTYLE 类型的组合
+ */
+void setfont(const unistring& name, float size, EZGDI_FONTSTYLE style = EZ_NORMAL);
 
-//设置字体属性
-void ezFontName(const ezstring& name);
-void ezFontSize(float size);
-void ezFontStyle(int style);
+/* 设置字体
+ * name             字体名称
+ * size             字体大小
+ * bold             是否粗体
+ * underline        是否下划线
+ * strikeout        是否删除线
+ */
+void setfont(const unistring& name, float size, bool bold, bool, bool underline, bool strikeout);
 
-//获取字体属性
-ezstring ezFontName();
-int ezFontSize();
-int ezFontStyle();
+/* 设置字体属性
+ */
+void font_name(const unistring& name);
+void font_size(float size);
+void font_style(int style);
 
-//字体颜色
-void ezFontColor(BYTE r, BYTE g, BYTE b, BYTE a = 255);
-void ezFontColor(UINT color);
+/* 获取字体属性
+ */
+unistring font_name();
+int font_size();
+int font_style();
+
+/* 字体颜色
+ * r                红色分量
+ * g                绿色分量
+ * b                蓝色分量
+ * a                透明度
+ */
+void font_color(BYTE r, BYTE g, BYTE b, BYTE a = 255);
+void font_color(COLORREF color);
 
 //输出字体
-void ezText(float x, float y, const wchar_t* text, size_t length);
-void ezText(float x, float y, const ezstring& text);
+void textout(float x, float y, const char* text, size_t length);
+void textout(float x, float y, const wchar_t* text, size_t length);
+void textout(float x, float y, const unistring& text);
 
-void ezText(float x, float y, float width, float height, const ezstring& text, int align = 0);
+void drawtext(float x, float y, float width, float height, const unistring& text, int align = 0);
 
-//字体格式化输出，和printf使用类似
-void ezPrint(float x, float y, const wchar_t* format, ...);
+/* 字体格式化输出，和printf使用类似
+ * x, y             绘制的字符串坐标
+ * param            格式化字符串
+ * ...              可变参数
+ */
+void print(float x, float y, const char* param, ...);
+void print(float x, float y, const wchar_t* param, ...);
 
-//获得字符串的像素宽度
-float ezTextWidth(const ezstring& text);
+/* 获得字符串的像素宽度
+ */
+float textwidth(const unistring& text);
 
-//获得字符串的像素高度
-float ezTextHeight(const ezstring& text);
+/* 获得字符串的像素高度
+ */
+float textheight(const unistring& text);
 
 /****************************************************************************
  *                                                                          *
@@ -706,61 +853,137 @@ float ezTextHeight(const ezstring& text);
  *                                                                          *
  ****************************************************************************/
 
-//加载图片，不用关心释放
-ezImage* ezLoadImage(const ezstring& filename);
+/* 创建图片
+ * width            宽度
+ * height           高度
+ */
+ezImage* newimage(int width, int height);
 
-//加载资源中的图片
-ezImage* ezLoadImage(int id, PCTSTR resource_type = TEXT("PNG"));
+/* 删除图片
+ * image            图片指针
+ */
+void freeimage(ezImage* image);
 
-//保存图片，默认保存为PNG格式
-int ezSaveImage(ezImage* image, const ezstring& filename);
+/* 加载图片，不用关心释放
+ */
+ezImage* loadimage(const unistring& filename);
 
-//在xy位置绘制图片，原始大小
-void ezDraw(ezImage* image, float x, float y);
+/* 加载资源中的图片
+ */
+ezImage* loadimage(int id, PCTSTR resource_type = TEXT("PNG"));
 
-//在xy位置绘制图片，缩放
-void ezDraw(ezImage* image, float x, float y, float width, float height);
+/* 保存图片
+ * image            要保存的图片
+ * filename         png 图片文件名
+ */
+int saveimage(ezImage* image, const unistring& filename);
 
-//在xy位置绘制图片，并旋转一个角度
-void ezRotateImage(ezImage* image, float x, float y, float rotate);
+/* 原始大小绘制图片
+ * xy               图片绘制位置
+ */
+void drawimage(ezImage* image, float x, float y);
 
-//在xy位置绘制图片，缩放，并旋转一个角度
-void ezRotateImage(ezImage* image, float x, float y, float width, float height, float rotate);
+/* 根据位置范围绘制图片
+ * x, y             图片绘制位置
+ * width            绘制的宽度
+ * height           绘制的高度
+ */
+void drawimage(ezImage* image, float x, float y, float width, float height);
 
-//---------------------------------------------------------------------------
-//
-// 多媒体
-//
-//---------------------------------------------------------------------------
+/* 原始大小旋转绘制图片，旋转中心是图片中心。
+ * x, y             图片绘制位置
+ * rotate           旋转的角度，单位是角度
+ */
+void rotate_image(ezImage* image, float x, float y, float rotate);
 
-//播放背景音乐
-void ezPlayMusic(PCTSTR filename);
+/* 根据位置范围旋转绘制图片，旋转中心是图片中心。
+ * x, y             图片绘制位置
+ * width            绘制的宽度
+ * height           绘制的高度
+ * rotate           旋转的角度，单位是角度
+ */
+void rotate_image(ezImage* image, float x, float y, float width, float height, float rotate);
 
-//播放资源中的音乐
-void ezPlayResourceMusic(PCTSTR filename, PCTSTR resource_type = TEXT("MP3"));
-void ezPlayResourceMusic(int id, PCTSTR resource_type = TEXT("MP3"));
+/* 把像素直接绘制到屏幕上，像素格式必须是 BGRA 32位。
+ * x, y             像素绘制位置
+ * width            绘制的宽度
+ * height           绘制的高度
+ * pwidth           图片像素的宽度
+ * pheight          图片像素的高度
+ */
+void draw_pixels(float x, float y, float width, float height, void* pixels, int pwidth, int pheight);
 
-//播放wav文件，loop是否循环
-int ezPlaySound(PCTSTR filename, bool loop = false);
+/****************************************************************************
+ *                                                                          *
+ *                                  多媒体                                  *
+ *                                                                          *
+ ****************************************************************************/
 
-//播放资源中的wav文件
-int ezPlayResourceSound(PCTSTR filename, bool loop = false);
-int ezPlayResourceSound(int id, bool loop = false);
+/* 播放背景音乐
+ * filename         音乐文件路径
+ */
+void playmusic(PCTSTR filename);
 
-//---------------------------------------------------------------------------
-//
-// 界面
-//
-//---------------------------------------------------------------------------
+/* 播放资源中的音乐
+ * filename         音乐文件资源名称
+ * resource_type    自定义资源类型名称
+ */
+void play_resource_music(PCTSTR filename, PCTSTR resource_type = TEXT("MP3"));
 
-//消息对话框
-int ezMsgBox(const ezstring& msg, const ezstring& title, int type = MB_OK);
+/* 播放资源中的音乐
+ * id               音乐文件资源 ID
+ * resource_type    自定义资源类型名称
+ */
+void play_resource_music(int id, PCTSTR resource_type = TEXT("MP3"));
 
-//显示信息
-void ezMessage(const ezstring& msg);
+/* 停止播放音乐
+ */
+void stopmusic();
 
-//显示输入框
-ezstring ezInputBox(const ezstring& title, const ezstring& message, const ezstring value = ezstring());
+
+/* 播放 wav 文件
+ * filename         wav 文件路径
+ * loop             是否循环
+ */
+int playsound(PCTSTR filename, bool loop = false);
+
+/* 播放资源中的wav文件
+ * filename         wav 资源名称
+ * loop             是否循环
+ */
+int play_resource_sound(PCTSTR filename, bool loop = false);
+
+/* 播放资源中的wav文件
+ * id               wav 资源 ID
+ * loop             是否循环
+ */
+int play_resource_sound(int id, bool loop = false);
+
+/* 停止所有声音播放
+ */
+void stopsound();
+
+/****************************************************************************
+ *                                                                          *
+ *                                   界面                                   *
+ *                                                                          *
+ ****************************************************************************/
+
+/* 消息对话框
+ * msg              消息文本
+ * title            消息窗口标题
+ * type             按钮类型
+ * 返回值           返回点击的按钮 ID
+ */
+int msgbox(const unistring& message, const unistring& title = L"消息", int type = MB_OK);
+
+/* 显示输入框
+ * message          消息文本
+ * title            输入框标题
+ * default_value    默认值
+ * 返回值           成功输入，返回非空的字符串
+ */
+unistring inputbox(const unistring& message, const unistring& title = L"输入", const unistring& default_value = unistring());
 
 #include "ezgdi.inl"
 
