@@ -1,7 +1,7 @@
 # minivg
 　　今天正式发布一个初学者用的程序库——minivg。这个库结构简洁，使用方便，容易理解。包含基础的绘图函数，键盘鼠标控制，音乐、声音播放，是写小作品的不二选择。<br>
-　　值得一提的是，这个库封装了GDI+绘图接口，GDI+是Windows Vista之后的系统内置的绘图API（xp也能使用），比起传统GDI，在图像抗锯齿、ALPHA半透明等方面得到了支持，非常容易绘制出美轮美奂的图像。Vista之后的界面绘制效果，离不开GDI+的支持。<br>
-　　整个库不需要lib文件，也不需要dll文件，只需要在你的cpp文件里面#include <minivg.hpp>它就能工作！测试过的编译器有：C++Builder，vs2017+，gcc。<br>
+　　值得一提的是，这个库封装了 GDI+ 绘图接口，GDI+ 是 Windows Vista 之后的系统内置的绘图 API（XP 也能使用），比起传统 GDI，在图像抗锯齿、ALPHA 半透明等方面得到了支持，非常容易绘制出美轮美奂的图像。Vista 之后的界面绘制效果，离不开 GDI+ 的支持。<br>
+　　整个库不需要 lib 文件，也不需要 dll 文件，只需要在你的 cpp 文件里面 #include <minivg.hpp> 它就能工作！测试过的编译器有：C++Builder，vs2017+，gcc。<br>
   
 　　主文件：<br>
 　　　　minivg.hpp    主要接口，有注释说明。<br>
@@ -155,4 +155,9 @@ void display()
 
 
 # 更新历史
-2021-07-30 库由 EZGDI 正式更名为 minivg，打算做成 OpenCV 的迷你版。
+## 2021-07-30
+库名字由 EZGDI 正式更名为 minivg，计划做成 OpenCV 的迷你版。<br>
+支持在对接到已有窗口中，创建背景缓冲区，通过 framebuf_blt() 函数显示。<br>
+增加多线程渲染（未加入锁帧功能）。<br>
+支持全屏和窗口动态切换：fullscreen(bool) 函数。<br>
+支持直接绘制内存二进制数据：draw_pixels() 函数，像素必须是 ABGR 格式。<br>
