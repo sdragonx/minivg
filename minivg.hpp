@@ -59,6 +59,9 @@
 #include <string>
 #include <vector>
 
+using std::min;
+using std::max;
+
 #include <Windows.h>
 #include <gdiplus.h>
 
@@ -207,16 +210,19 @@ public:
  ****************************************************************************/
 
 #ifndef M_PI
-  #define M_PI      3.141592653589793238462   // acos(-1.0)
-  #define M_PI_2    1.570796326794896619231   // M_PI/2
+  #define M_PI      3.141592653589793238462     // acos(-1.0)
+#endif
+
+#ifndef M_PI_2
+    #define M_PI_2    1.570796326794896619231   // M_PI/2
 #endif
 
 #ifndef M_RD
-  #define M_RD       0.017453292519943295769  // 弧度(radian)
-  #define M_INV_RD  57.295779513082320876798  // 弧度的倒数(reciprocal) 1.0/M_RD
+  #define M_RD       0.017453292519943295769    // 弧度(radian)
+  #define M_INV_RD  57.295779513082320876798    // 弧度的倒数(reciprocal) 1.0/M_RD
 #endif
 
-// 判断数值是否是0
+// 判断数值是否是 0
 template<typename T>inline bool is_zero(T n) { return n == 0; };
 template<>inline bool is_zero<float>(float n) { return n < 0.0 ? (n > -FLT_EPSILON) : (n < FLT_EPSILON); }
 template<>inline bool is_zero<double>(double n) { return n < 0.0 ? (n > -DBL_EPSILON) : (n < DBL_EPSILON); }
@@ -225,14 +231,14 @@ template<>inline bool is_zero<double>(double n) { return n < 0.0 ? (n > -DBL_EPS
 template<typename T>
 inline bool is_equal(T a, T b) { return is_zero(a - b); }
 
-// 产生0 ~ n之间的随机数
+// 产生 0 ~ n 之间的随机数
 template<typename T>
 inline int random(T n) { return rand() % n; }
 
-// 产生0 ~ 1之间的随机浮点数
+// 产生 0 ~ 1 之间的随机浮点数
 inline double rand_real() { return double(rand()) / RAND_MAX; }
 
-// 产生minVal ~ maxVal之间的随机浮点数
+// 产生 minVal ~ maxVal 之间的随机浮点数
 inline double rand_real(double minVal, double maxVal)
 {
     return minVal + (maxVal - minVal) * rand_real();
