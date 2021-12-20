@@ -768,7 +768,7 @@ public:
             return ;
         }
 
-        if (width != vp.width || height != vp.height) {
+        if (width != vp.z || height != vp.w) {
             pixelbuf = bm_create(width, height);
             SelectObject(hdc, pixelbuf);
             g = new Gdiplus::Graphics(hdc);
@@ -781,7 +781,7 @@ public:
     // 将缓冲区的图像绘制到目标 HDC
     void bitblt(HDC dc)
     {
-        BitBlt(dc, vp.x, vp.y, vp.width, vp.height, hdc, 0, 0, SRCCOPY);
+        BitBlt(dc, vp.x, vp.y, vp.z, vp.w, hdc, 0, 0, SRCCOPY);
     }
 
     // 设置窗口置顶

@@ -426,7 +426,7 @@ typedef vec4<int>       vec4i;
 typedef vec4<float>     vec4f;
 typedef vec4<double>    vec4d;
 
-#else
+#elif !defined(GLM_HPP_20211019161738)
 
 typedef glm::ivec2      vec2i;
 typedef glm::vec2       vec2f;
