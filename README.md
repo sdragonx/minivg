@@ -154,5 +154,5 @@ void display()
 ![运行效果图](https://github.com/sdragonx/minivg/blob/master/sample.jpg)
 
 
-#更新历史
+# 更新历史
 2021-07-30 库由 EZGDI 正式更名为 minivg，打算做成 OpenCV 的迷你版。
