@@ -916,6 +916,16 @@ protected:
 template<typename T>
 vgContext<T> vgContext<T>::instance = vgContext<T>();
 
+// 屏幕更新线程
+MINIVG_INLINE void updateThread(void* arg)
+{
+    while (vgContext<>::instance.running) {
+        // 刷新窗口
+        vgContext<>::instance.repaint();
+    }
+
+}
+
 }// end namespace internal
 
 //---------------------------------------------------------------------------
@@ -960,11 +970,7 @@ MINIVG_INLINE int initgraph(const unistring& title, int width, int height, int p
             cy = 0;
         }
 
-        internal::vgContext<>::instance.winRect.left = cx;
-        internal::vgContext<>::instance.winRect.top = cy;
-        internal::vgContext<>::instance.winRect.right = cx + width;
-        internal::vgContext<>::instance.winRect.bottom = cy + height;
-
+        // 设置窗口样式
         DWORD dwStyle;
         DWORD dwExStyle;
 
@@ -986,12 +992,24 @@ MINIVG_INLINE int initgraph(const unistring& title, int width, int height, int p
             break;
         }
 
+        // 计算窗口大小
+        RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
+        AdjustWindowRectEx(&rect, dwStyle, FALSE, WS_EX_CLIENTEDGE);
+        width = static_cast<int>(rect.right - rect.left);
+        height = static_cast<int>(rect.bottom - rect.top);
+
+        OffsetRect(&rect, cx, cy);
+        internal::vgContext<>::instance.winRect = rect;
+
         // 创建一个窗口
         internal::vgContext<>::instance.create(MINIVG_CLASS_NAME, title.c_str(),
             cx, cy, width, height,
             dwStyle, dwExStyle);
 
         internal::vgContext<>::instance.show();
+
+        // 启动刷新线程
+        CreateThread(0, 0, (LPTHREAD_START_ROUTINE) internal::updateThread, nullptr, 0, 0);
     }
 
     return 0;
@@ -1095,22 +1113,9 @@ MINIVG_INLINE bool do_events()
     return internal::vgContext<>::instance.running;
 }
 
-// 屏幕更新线程
-MINIVG_INLINE void thread_proc(void* arg)
-{
-    while (internal::vgContext<>::instance.running) {
-        // 刷新窗口
-        internal::vgContext<>::instance.repaint();
-    }
-
-}
-
 // 程序执行
 MINIVG_INLINE int start_app()
 {
-    // 启动刷新线程
-    CreateThread(0, 0, (LPTHREAD_START_ROUTINE)thread_proc, nullptr, 0, 0 );
-
     while(do_events());
 
     return 0;
