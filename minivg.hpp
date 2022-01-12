@@ -426,16 +426,30 @@ typedef vec4<int>       vec4i;
 typedef vec4<float>     vec4f;
 typedef vec4<double>    vec4d;
 
-#elif !defined(GLM_HPP_20211019161738)
+#else
 
-typedef glm::ivec2      vec2i;
-typedef glm::vec2       vec2f;
-typedef glm::dvec2      vec2d;
+#if !defined(GLM_HPP_20211019161738)
+namespace cgl
+{
+	typedef glm::ivec2      vec2i;
+	typedef glm::vec2       vec2f;
+	typedef glm::dvec2      vec2d;
+	
+	typedef glm::u8vec4     vec4ub;
+	typedef glm::ivec4      vec4i;
+	typedef glm::vec4       vec4f;
+	typedef glm::dvec4      vec4d;
+}
+#endif
 
-typedef glm::u8vec4     vec4ub;
-typedef glm::ivec4      vec4i;
-typedef glm::vec4       vec4f;
-typedef glm::dvec4      vec4d;
+using cgl::vec2i;
+using cgl::vec2f;
+using cgl::vec2d;
+
+using cgl::vec4ub;
+using cgl::vec4i;
+using cgl::vec4f;
+using cgl::vec4d;
 
 #endif
 
@@ -581,7 +595,7 @@ void reshape(int width, int height);
  */
 void fullscreen(bool value);
 
-/* 消息循环处理
+/* 消息循环处理，如果返回 false，表示程序退出。
  */
 bool do_events();
 

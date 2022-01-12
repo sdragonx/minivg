@@ -1911,13 +1911,13 @@ inline void ezImage::unlock()
 //
 
 // 创建图片
-static ezImage* newimage(int width, int height)
+MINIVG_INLINE ezImage* newimage(int width, int height)
 {
     return internal::vgContext<>::instance.resource.allocate(width, height);
 }
 
 // 删除图片
-static void freeimage(ezImage* image)
+MINIVG_INLINE void freeimage(ezImage* image)
 {
     internal::vgContext<>::instance.resource.free(image);
 }
@@ -1974,7 +1974,7 @@ MINIVG_INLINE void rotate_image(ezImage* image, float x, float y, float width, f
 }
 
 // 把像素直接绘制到屏幕上，像素格式必须是 BGRA 32位。
-static void draw_pixels(float x, float y, float width, float height, void* pixels, int pwidth, int pheight)
+MINIVG_INLINE void draw_pixels(float x, float y, float width, float height, void* pixels, int pwidth, int pheight)
 {
     Gdiplus::Graphics* g = internal::vgContext<>::instance.g;
     if(g) {
