@@ -17,6 +17,18 @@
 #ifndef MINIVG_HPP
 #define MINIVG_HPP
 
+//#ifndef UNICODE
+//  #error UNICODE can not defined.
+//#endif
+
+#ifndef UNICODE
+  #define UNICODE
+#endif
+
+#ifndef _UNICODE
+  #define _UNICODE
+#endif
+
 #ifndef NO_WIN32_LEAN_AND_MEAN
   #define NO_WIN32_LEAN_AND_MEAN
 #endif
@@ -27,8 +39,11 @@
 
 #define NOMINMAX
 
-#if defined(_MSC_VER)
-  #ifndef _USE_MATH_DEFINES
+#if defined(__GNUC__)
+  #define EZ_PUBLIC_DECLARE __attribute__((weak))
+#else
+  #define EZ_PUBLIC_DECLARE __declspec(selectany)
+  #ifdef _MSC_VER
     #define _USE_MATH_DEFINES
   #endif
 #endif
@@ -48,10 +63,9 @@ using std::min;
 using std::max;
 
 #include <Windows.h>
-#include <objbase.h>
 #include <gdiplus.h>
 
-typedef unsigned char byte_t;
+
 
 /****************************************************************************
  *                                                                          *
@@ -65,32 +79,26 @@ namespace minivg{
 enum{
     EZ_NULL,
 
-    EZ_FIXED = 1,                           // 固定大小
-    EZ_SIZEABLE = 2,                        // 可缩放
-    EZ_FULLSCREEN = 4,                      // 全屏
-    EZ_BACKBUFFER = 8,                      // 不创建窗口
+    EZ_FIXED = 1,                           //固定大小
+    EZ_SIZEABLE = 2,                        //可缩放
+    EZ_FULLSCREEN = 4,                      //全屏
+    EZ_BACKBUFFER = 8,                      //不创建窗口
 
-    EZ_LEFT   = 1,                          // 左
-    EZ_RIGHT  = 2,                          // 右
-    EZ_UP     = 4,                          // 上
-    EZ_DOWN   = 8,                          // 下
-    EZ_TOP    = EZ_UP,                      // 顶部
-    EZ_BOTTOM = EZ_DOWN,                    // 底部
+    EZ_LEFT   = 1,                          //左
+    EZ_RIGHT  = 2,                          //右
+    EZ_UP     = 4,                          //上
+    EZ_DOWN   = 8,                          //下
+    EZ_TOP    = EZ_UP,                      //顶部
+    EZ_BOTTOM = EZ_DOWN,                    //底部
 
-    EZ_CENTER_H = EZ_LEFT | EZ_RIGHT,       // 水平居中
-    EZ_CENTER_V = EZ_UP | EZ_DOWN,          // 垂直居中
-    EZ_CENTER = EZ_CENTER_H | EZ_CENTER_V,  // 居中
+    EZ_CENTER_H = EZ_LEFT | EZ_RIGHT,       //水平居中
+    EZ_CENTER_V = EZ_UP | EZ_DOWN,          //垂直居中
+    EZ_CENTER = EZ_CENTER_H | EZ_CENTER_V,  //居中
 
-    EZ_MIDDLE   = 16,                       // 中
+    EZ_MIDDLE   = 16,                       //中
 
-    EZ_RGB,                                 // RGB 颜色
-    EZ_RGBA,                                // RGBA 颜色
-
-    EZ_BMP,                                 // 图片格式
-    EZ_JPG,
-    EZ_GIF,
-    EZ_TIFF,
-    EZ_PNG,
+    EZ_RGB,                                 //RGB 颜色
+    EZ_RGBA,                                //RGBA 颜色
 
     EZ_OK = 0,
     EZ_ERROR = -1,
@@ -110,7 +118,7 @@ typedef void (*EZ_PAINT_EVENT)();
 
 /****************************************************************************
  *                                                                          *
- *                            Unicode 字符串类                              *
+ *                             Unicode字符串类                              *
  *                                                                          *
  ****************************************************************************/
 
@@ -126,7 +134,7 @@ inline T string_cast(const std::basic_string<_char_t>& str)
 
 // 其他类型转字符串
 template<typename _char_t, typename T>
-inline std::basic_string<_char_t> to_string(const T& value)
+std::basic_string<_char_t> to_string(const T& value)
 {
     std::basic_stringstream<_char_t> stm;
     stm << value;
@@ -134,12 +142,12 @@ inline std::basic_string<_char_t> to_string(const T& value)
 }
 
 // unicode to ansi
-inline std::string to_ansi(const wchar_t* str, size_t length)
+inline std::string to_ansi(const wchar_t* str, int length)
 {
     std::vector<char> buf;
-    int n = WideCharToMultiByte(CP_OEMCP, 0, str, (int) length, NULL, 0, NULL, FALSE);
+    int n = WideCharToMultiByte(CP_OEMCP, 0, str, length, NULL, 0, NULL, FALSE);
     buf.resize(n);
-    WideCharToMultiByte(CP_OEMCP, 0, str, (int) length, &buf[0], n, NULL, FALSE);
+    WideCharToMultiByte(CP_OEMCP, 0, str, length, &buf[0], n, NULL, FALSE);
     return std::string(&buf[0], n);
 }
 
@@ -211,7 +219,7 @@ public:
 
 #ifndef M_RD
   #define M_RD       0.017453292519943295769    // 弧度(radian)
-  #define M_INV_RD  57.295779513082320876798    // 弧度的倒数(reciprocal) 1.0 / M_RD
+  #define M_INV_RD  57.295779513082320876798    // 弧度的倒数(reciprocal) 1.0/M_RD
 #endif
 
 // 判断数值是否是 0
@@ -221,28 +229,19 @@ template<>inline bool is_zero<double>(double n) { return n < 0.0 ? (n > -DBL_EPS
 
 // 判断数值是否相等
 template<typename T>
-inline bool is_equal(T a, T b)
-{
-    return is_zero(a - b);
-}
+inline bool is_equal(T a, T b) { return is_zero(a - b); }
 
-// 产生 [0 ~ n] 之间的随机数
+// 产生 0 ~ n 之间的随机数
 template<typename T>
-inline int random(T n)
-{
-    return rand() % n;
-}
+inline int random(T n) { return rand() % n; }
 
-// 产生 [0 ~ 1] 之间的随机浮点数
-inline double rand_real()
-{
-    return double(rand()) / RAND_MAX;
-}
+// 产生 0 ~ 1 之间的随机浮点数
+inline double rand_real() { return double(rand()) / RAND_MAX; }
 
-// 产生 [a ~ b] 之间的随机浮点数
-inline double rand_real(double a, double b)
+// 产生 minVal ~ maxVal 之间的随机浮点数
+inline double rand_real(double minVal, double maxVal)
 {
-    return a + (b - a) * rand_real();
+    return minVal + (maxVal - minVal) * rand_real();
 }
 
 // 获得向量的弧度
@@ -256,10 +255,29 @@ inline double radian(double x, double y)
     return n;
 }
 
-// 计算点 [x, y] 到原点的角度
+// 通过xy获得角度
 inline double angle(double x, double y)
 {
     return radian(x, y) * M_INV_RD;
+}
+
+// 从 source 递进到 dest，步长为 speed
+template<typename T>
+T step(T source, T dest, T speed)
+{
+    if(source < dest){
+        source += speed;
+        if(source > dest){
+            source = dest;
+        }
+    }
+    else if(source > dest){
+        source -= speed;
+        if(source < dest){
+            source = dest;
+        }
+    }
+    return source;
 }
 
 /****************************************************************************
@@ -353,6 +371,22 @@ public:
     {
         return !is_equal(x, other.x) || !is_equal(y, other.y);
     }
+
+    T length()const
+    {
+        return (T)sqrt(x * x + y * y);
+    }
+
+    vec2& rotate(double angle)
+    {
+        using namespace std;
+        angle *= M_RD;
+        double sine = sin(angle);
+        double cosine = cos(angle);
+        return set(
+            x * cosine - y * sine,
+            y * cosine + x * sine);
+    }
 };
 
 template<typename T>
@@ -392,50 +426,6 @@ typedef vec4<int>       vec4i;
 typedef vec4<float>     vec4f;
 typedef vec4<double>    vec4d;
 
-// 获取向量距离原点的距离
-template<typename T>
-inline float length(const vec2<T>& v)
-{
-    return (float) sqrt(v.x * v.x + v.y * v.y);
-}
-
-// 获取两个向量的距离
-template<typename T>
-inline float distance(const vec2<T>& v1, const vec2<T>& v2)
-{
-    return length(v2 - v1);
-}
-
-// 归一化向量
-template<typename T>
-inline vec2<T> normalize(const vec2<T>& v)
-{
-    float n = length(v);
-    if (n == 0) {
-        return v;
-    }
-
-    n = 1.0f / n;
-
-    return vec2(v.x * n, v.y * n);
-}
-
-// 旋转向量
-template<typename T>
-inline vec2<T> rotate(const vec2<T>& v, T angle)
-{
-    T sine = sin(angle);
-    T cosine = cos(angle);
-    return vec2<T>(v.x * cosine - v.y * sine, v.y * cosine + v.x * sine);
-}
-
-// 计算角度
-template<typename T>
-inline T angle(const vec2<T>& v)
-{
-    return ::angle(v.x, v.y);
-}
-
 #else
 
 #if !defined(GLM_HPP_20211019161738)
@@ -469,44 +459,35 @@ using cgl::vec4d;
  *                                                                          *
  ****************************************************************************/
 
-class ezColor : public Gdiplus::Color
-{
-public:
-    ezColor() : Gdiplus::Color() {}
-    ezColor(uint32_t color) : Gdiplus::Color(color) {}
-    ezColor(byte_t r, byte_t g, byte_t b, byte_t a = 255) : Gdiplus::Color(a, r, g, b) {}
-};
-
 class ezImage
 {
 protected:
-    Gdiplus::Bitmap* m_handle;      // 图片指针
-    Gdiplus::BitmapData* m_data;    // 图片 map 数据指针
+    Gdiplus::Bitmap* m_handle;
+    Gdiplus::BitmapData* m_data;
 
 public:
     ezImage();
     ~ezImage();
 
-    // 返回图片的指针
     Gdiplus::Bitmap* handle()const;
 
-    // 创建一个图片，默认为 32 位色
-    int create(int width, int height, int format = EZ_RGBA);
+    // 创建一个图片，默认为32位色
+    int create(int width, int height, int format = PixelFormat32bppARGB);
 
-    // 打开一个图片，支持 bmp、jpg、png、静态 gif 等常见格式
+    // 打开一个图片，支持 bmp、jpg、png、静态gif 等常见格式
     int open(const unistring& filename);
 
     // 打开资源中的图片
     int open(int id, PCTSTR resource_type = TEXT("BITMAP"));
 
-    // 绑定 HBITMAP 对象，直接操作 HBITMAP。
-    int bind(HBITMAP hbmp);
+    // 映射一个 HBITMAP 对象
+    int map(HBITMAP hbmp);
 
     // 判断图片是否为空
     bool empty()const;
 
     // 保存图片
-    int save(const unistring& filename, int type = EZ_PNG);
+    int save(const unistring& filename);
 
     // 自动释放图片
     void close();
@@ -517,11 +498,11 @@ public:
     // 返回图片的高度
     int height()const;
 
-    // 获取图像数据指针
-    void* map(bool readonly = false, int pixelformat = EZ_RGBA);
+    // 获取图像数据
+    void* lock(int pixelformat = EZ_RGBA);
 
     // 还原图像数据
-    void unmap();
+    void unlock();
 };
 
 /****************************************************************************
@@ -581,7 +562,7 @@ int initgraph(int width, int height, int param = EZ_FIXED);
 int initgraph(const unistring& title, int width, int height, int param = EZ_FIXED);
 
 /* 在已有的窗口界面上初始化。
- * 可以和 vcl、mfc，或者其他界面库协同使用。（貌似只有顶层窗口能实现效果）
+ * 可以和vcl、mfc，或者其他界面库协同使用。（貌似只有顶层窗口能实现效果）
  * hwnd             要初始化的窗口句柄
  */
 int initgraph(HWND hwnd);
@@ -691,9 +672,9 @@ void framebuf_blt(HDC hdc);
 /* 设置显示质量
  */
 enum {
-    EZ_SPEED,       // 速度优先
-    EZ_MEDIUM,      // 中等质量
-    EZ_QUALITY,     // 质量优先
+    EZ_SPEED,   //速度优先
+    EZ_MEDIUM,  //中等质量
+    EZ_QUALITY, //质量优先
 };
 
 int effect_level(int level);
@@ -832,7 +813,7 @@ void draw_polyline(const vec2f* points, size_t size);
 void draw_polygon(const vec2f* points, size_t size);
 
 /* 填充多边形
- * points           点数组
+ * points               点数组
  * size             点数组大小
  */
 void fill_polygon(const vec2f* points, size_t size);
@@ -843,14 +824,14 @@ void fill_polygon(const vec2f* points, size_t size);
  *                                                                          *
  ****************************************************************************/
 
-/* 字体样式，可以任意组合
+/* 字体样式，可以随意组合
  */
 enum EZGDI_FONTSTYLE{
-    EZ_NORMAL       = 0,    // 普通字体
-    EZ_BOLD         = 1,    // 粗体
-    EZ_ITALIC       = 2,    // 斜体
-    EZ_UNDERLINE    = 4,    // 下划线
-    EZ_STRIKEOUT    = 8     // 删除线
+    EZ_NORMAL       = 0,    //普通字体
+    EZ_BOLD         = 1,    //粗体
+    EZ_ITALIC       = 2,    //斜体
+    EZ_UNDERLINE    = 4,    //下划线
+    EZ_STRIKEOUT    = 8     //删除线
 };
 
 /* 设置字体
@@ -890,14 +871,14 @@ int font_style();
 void font_color(BYTE r, BYTE g, BYTE b, BYTE a = 255);
 void font_color(COLORREF color);
 
-// 输出文字
+//输出字体
 void textout(float x, float y, const char* text, size_t length);
 void textout(float x, float y, const wchar_t* text, size_t length);
 void textout(float x, float y, const unistring& text);
 
 void drawtext(float x, float y, float width, float height, const unistring& text, int align = 0);
 
-/* 文字格式化输出，和 printf 使用类似
+/* 字体格式化输出，和printf使用类似
  * x, y             绘制的字符串坐标
  * param            格式化字符串
  * ...              可变参数
@@ -930,7 +911,7 @@ ezImage* newimage(int width, int height);
  */
 void freeimage(ezImage* image);
 
-/* 加载图片。（可以不用关心释放，未释放的图片，会在程序结束前全部释放）
+/* 加载图片，不用关心释放
  */
 ezImage* loadimage(const unistring& filename);
 
@@ -974,12 +955,10 @@ void rotate_image(ezImage* image, float x, float y, float width, float height, f
  * x, y             像素绘制位置
  * width            绘制的宽度
  * height           绘制的高度
- * pixels           绘制的像素指针
- * imageWidth       图片像素的宽度
- * imageHeight      图片像素的高度
+ * pwidth           图片像素的宽度
+ * pheight          图片像素的高度
  */
-void draw_pixels(float x, float y, float width, float height,
-    const void* pixels, int imageWidth, int imageHeight);
+void draw_pixels(float x, float y, float width, float height, void* pixels, int pwidth, int pheight);
 
 /****************************************************************************
  *                                                                          *
