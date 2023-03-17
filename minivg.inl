@@ -13,6 +13,7 @@
 
 #include <stdio.h>
 #include <tchar.h>
+#include <time.h>
 
 #include <windows.h>
 #include <windowsx.h>
@@ -50,6 +51,12 @@
 
 namespace minivg {
 namespace detail {
+
+// 获取浮点时间戳
+inline float tick_time()
+{
+    return static_cast<float>(clock()) * 0.001f;
+}
 
 //---------------------------------------------------------------------------
 //
@@ -216,11 +223,13 @@ public:
         DWORD style = WS_OVERLAPPEDWINDOW,
         DWORD styleEx = 0)
     {
-        static bool is_init = false;
+        // 2023-03-12 23:08:02 bug
+        /*static bool is_init = false;
         if (!is_init) {
             InitClass(className, 0, basic_wndproc);
             is_init = true;
-        }
+        }*/
+        init_window_class(className, basic_wndproc);
 
         #ifndef UNICODE
         std::string buf = to_ansi(title, -1);
@@ -436,31 +445,36 @@ protected:
         return hwnd;
     }
 
-    // 注册窗口类
-    int InitClass(PCWSTR className, int style, WNDPROC wndproc)
+    // 初始化窗口类
+    BOOL init_window_class(LPCWSTR classname, WNDPROC WndProc)
     {
-        int atom = 0;
-        WNDCLASSEXW wc;
         HINSTANCE hInstance = GetModuleHandle(nullptr);
 
-        memset(&wc, 0, sizeof(wc));
-        wc.cbSize = sizeof(wc);
-        wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;// CS_DBLCLKS 支持鼠标双击事件
-        wc.lpfnWndProc = wndproc;
-        wc.hInstance = hInstance;
-        wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
-        wc.hbrBackground = (HBRUSH) (COLOR_WINDOW);
-        wc.lpszClassName = className;
-        wc.hIcon = LoadIconW(hInstance, L"ICO_MAIN");
-        wc.hIconSm = LoadIconW(hInstance, L"ICO_MAIN");
-
-        atom = RegisterClassExW(&wc);
-
-        if (!atom) {
-            //MessageBox(nullptr, TEXT("Window Registration Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION|MB_OK);
-            return -1;
+        WNDCLASSEXW wc = { sizeof(wc) };
+        if (GetClassInfoExW(hInstance, classname, &wc)) {
+            //printf("class is exists.\n");
         }
-        return atom;
+        else {
+            wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;// CS_DBLCLKS 支持鼠标双击事件
+            wc.lpfnWndProc = WndProc;
+            wc.hInstance = hInstance;
+            wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+            wc.hbrBackground = (HBRUSH) (COLOR_WINDOW);
+            wc.lpszClassName = classname;
+            wc.hIcon = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
+            wc.hIconSm = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
+
+            ATOM atom = RegisterClassExW(&wc);
+
+            if (!atom) {
+                MessageBox(nullptr, TEXT("Register Window Class Failed!"), TEXT("Error!"), MB_OK | MB_ICONEXCLAMATION);
+                return FALSE;
+            }
+
+            //printf("register class success.\n");
+        }
+
+        return TRUE;
     }
 };
 
@@ -672,6 +686,8 @@ public:
     EZ_MOUSE_EVENT OnMouseMove;
 
     EZ_TIMER_EVENT OnTimer;         // 计时器事件
+    float tick;
+
     EZ_PAINT_EVENT OnPaint;         // 窗口绘制事件
 
     ezResource resource;            // 资源管理器
@@ -704,6 +720,7 @@ public:
     {
         prevWndProc = nullptr;
         gdiplusInit();
+        tick = tick_time();
     }
 
     ~vgContext()
@@ -827,7 +844,11 @@ public:
             this->OnWindowPaint();
             break;
         case WM_TIMER:
-            if (OnTimer)OnTimer();
+            {
+                float t = tick_time();
+                if (OnTimer)OnTimer(tick - t);
+                tick = t;
+            }
             break;
 
         case WM_KEYDOWN:
@@ -941,8 +962,8 @@ MINIVG_INLINE void updateThread(void* arg)
 
 MINIVG_INLINE int initgraph(const unistring& title, int width, int height, int param)
 {
-    setlocale(LC_ALL, "");                  // c 中文环境
-    std::locale::global(std::locale(""));   // c++ 中文环境
+    setlocale(LC_ALL, "chs");                   // c 中文环境
+    std::locale::global(std::locale("chs"));    // c++ 中文环境
 
     // 保存创建参数
     detail::vgContext<>::instance.initParam = param;
@@ -1342,6 +1363,12 @@ MINIVG_INLINE void pen_width(float width)
     if (detail::vgContext<>::instance.pen)detail::vgContext<>::instance.pen->SetWidth(width);
 }
 
+// 获取画笔宽度
+MINIVG_INLINE float pen_width()
+{
+    return detail::vgContext<>::instance.pen ? detail::vgContext<>::instance.pen->GetWidth() : 1.0f;
+}
+
 // 设置画笔模式
 MINIVG_INLINE void pen_style(int mode)
 {
@@ -1392,6 +1419,11 @@ MINIVG_INLINE void draw_point(float x, float y, float size)
         float half = size * 0.5f;
         detail::vgContext<>::instance.g->FillEllipse(&brush, x - half, y - half, size, size);
     }
+}
+
+MINIVG_INLINE void draw_point(float x, float y)
+{
+    draw_point(x, y, pen_width());
 }
 
 // 绘制线段
@@ -1725,11 +1757,17 @@ inline int ezImage::open(const unistring& filename)
 {
     this->close();
     Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(filename.c_str());
-    if (bmp) {
+    if (bmp->GetLastStatus() == Gdiplus::Ok) {
         m_handle = bmp->Clone(0, 0, bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppPARGB);
-        delete bmp;
+
+        // 调整图片 DPI
+        m_handle->SetResolution(96.0f, 96.0f);
+
         return 0;
     }
+
+    detail::safe_delete(bmp);
+
     return -1;
 }
 
@@ -1781,6 +1819,10 @@ inline int ezImage::open(int id, PCTSTR resource_type)
     if (bmp) {
         m_handle = bmp->Clone(0, 0, bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppPARGB);
         delete bmp;
+
+        // 调整图片 DPI
+        m_handle->SetResolution(96.0f, 96.0f);
+
         return 0;
     }
     return -1;
@@ -1814,7 +1856,7 @@ inline const wchar_t* GetImageType(int type)
     const wchar_t* GDIPLUS_IMAGE_TIFF = L"image/tiff";
     const wchar_t* GDIPLUS_IMAGE_PNG = L"image/png";
 
-    switch(type) {
+    switch (type) {
     case EZ_BMP:
         return GDIPLUS_IMAGE_BMP;
     case EZ_JPG:

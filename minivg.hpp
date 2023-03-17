@@ -5,9 +5,11 @@
 
  2020-01-01 16:37:22
 
- EZGDI 是一个比较简单、易学、易用的 C++ 库，设计目的旨在帮助初学者学习使用 C++。
- 欢迎试用 MINIVG，也欢迎访问我的 GITHUB 提出宝贵意见。
- https://github.com/sdragonx/ezgdi
+ 这个库基本现在改名为 minivg
+
+ minivg 是一个比较简单、易学、易用的 C++ 库，设计目的旨在帮助初学者学习使用 C++。
+ 欢迎试用 minivg，也欢迎访问我的 GITHUB 提出宝贵意见。
+ https://github.com/sdragonx/minivg
 
  如果是用的 Visual Studio，这个库不需要其他设置就能用；
  如果用的是 g++ 编译器， 比如 DevCPP，需要在编译参数里面添加 -finput-charset=GBK 来支持中文字符
@@ -18,19 +20,25 @@
 #define MINIVG_HPP
 
 #ifndef NO_WIN32_LEAN_AND_MEAN
-  #define NO_WIN32_LEAN_AND_MEAN
+#   define NO_WIN32_LEAN_AND_MEAN
 #endif
 
 #ifndef STRICT
-  #define STRICT
+#   define STRICT
+#endif
+
+#if defined(_MSC_VER)
+#   ifndef _USE_MATH_DEFINES
+#       define _USE_MATH_DEFINES
+#   endif
 #endif
 
 #define NOMINMAX
-
-#if defined(_MSC_VER)
-  #ifndef _USE_MATH_DEFINES
-    #define _USE_MATH_DEFINES
-  #endif
+#ifdef max
+#   undef max
+#endif
+#ifdef min
+#   undef min
 #endif
 
 #include <cmath>
@@ -59,10 +67,11 @@ typedef unsigned char byte_t;
  *                                                                          *
  ****************************************************************************/
 
-namespace minivg{
+namespace minivg {
 
 // enum 常量
-enum{
+enum
+{
     EZ_NULL,
 
     EZ_FIXED = 1,                           // 固定大小
@@ -70,18 +79,18 @@ enum{
     EZ_FULLSCREEN = 4,                      // 全屏
     EZ_BACKBUFFER = 8,                      // 不创建窗口
 
-    EZ_LEFT   = 1,                          // 左
-    EZ_RIGHT  = 2,                          // 右
-    EZ_UP     = 4,                          // 上
-    EZ_DOWN   = 8,                          // 下
-    EZ_TOP    = EZ_UP,                      // 顶部
+    EZ_LEFT = 1,                            // 左
+    EZ_RIGHT = 2,                           // 右
+    EZ_UP = 4,                              // 上
+    EZ_DOWN = 8,                            // 下
+    EZ_TOP = EZ_UP,                         // 顶部
     EZ_BOTTOM = EZ_DOWN,                    // 底部
 
     EZ_CENTER_H = EZ_LEFT | EZ_RIGHT,       // 水平居中
     EZ_CENTER_V = EZ_UP | EZ_DOWN,          // 垂直居中
     EZ_CENTER = EZ_CENTER_H | EZ_CENTER_V,  // 居中
 
-    EZ_MIDDLE   = 16,                       // 中
+    EZ_MIDDLE = 16,                         // 中
 
     EZ_RGB,                                 // RGB 颜色
     EZ_RGBA,                                // RGBA 颜色
@@ -97,16 +106,16 @@ enum{
 };
 
 // 键盘事件
-typedef void (*EZ_KEY_EVENT)(int key);
+typedef void(*EZ_KEY_EVENT)(int key);
 
 // 鼠标事件
-typedef void (*EZ_MOUSE_EVENT)(int x, int y, int button);
+typedef void(*EZ_MOUSE_EVENT)(int x, int y, int button);
 
 // 计时器事件
-typedef void (*EZ_TIMER_EVENT)();
+typedef void(*EZ_TIMER_EVENT)(float delay);
 
 // 窗口绘制事件
-typedef void (*EZ_PAINT_EVENT)();
+typedef void(*EZ_PAINT_EVENT)();
 
 /****************************************************************************
  *                                                                          *
@@ -156,26 +165,26 @@ inline std::wstring to_unicode(const char* str, int length)
 class unistring : public std::wstring
 {
 public:
-    unistring() : std::wstring() { }
+    unistring() : std::wstring() {}
     unistring(const char* str) : std::wstring() { assign(str, strlen(str)); }
     unistring(const char* str, size_t size) : std::wstring() { assign(str, size); }
     unistring(const std::string& str) : std::wstring() { assign(str.c_str(), str.length()); }
 
-    unistring(const wchar_t* str) : std::wstring(str) { }
-    unistring(const wchar_t* str, size_t size) : std::wstring(str, size) { }
-    unistring(const std::wstring& str) : std::wstring(str) { }
+    unistring(const wchar_t* str) : std::wstring(str) {}
+    unistring(const wchar_t* str, size_t size) : std::wstring(str, size) {}
+    unistring(const std::wstring& str) : std::wstring(str) {}
 
     // 整数转字符串
-    unistring(int n) : std::wstring(to_string<wchar_t>(n)) { }
+    unistring(int n) : std::wstring(to_string<wchar_t>(n)) {}
 
     // 单实数转字符串
-    unistring(float n) : std::wstring(to_string<wchar_t>(n)) { }
+    unistring(float n) : std::wstring(to_string<wchar_t>(n)) {}
 
     // 双实数转字符串
-    unistring(double n) : std::wstring(to_string<wchar_t>(n)) { }
+    unistring(double n) : std::wstring(to_string<wchar_t>(n)) {}
 
     // 复制构造
-    unistring(const unistring& str) : std::wstring(str.c_str(), str.length()) { }
+    unistring(const unistring& str) : std::wstring(str.c_str(), str.length()) {}
 
     using std::wstring::assign;
 
@@ -190,9 +199,9 @@ public:
         return *this;
     }
 
-    int    to_int()const    { return string_cast<int>(*this);    }// 字符串转整数
-    float  to_float()const  { return string_cast<float>(*this);  }// 字符串转单实数
-    double to_double()const { return string_cast<double>(*this); }// 字符串转双实数
+    int    to_int()const { return string_cast<int>(*this); }        // 字符串转整数
+    float  to_float()const { return string_cast<float>(*this); }    // 字符串转单实数
+    double to_double()const { return string_cast<double>(*this); }  // 字符串转双实数
 };
 
 /****************************************************************************
@@ -202,16 +211,16 @@ public:
  ****************************************************************************/
 
 #ifndef M_PI
-  #define M_PI      3.141592653589793238462     // acos(-1.0)
+#define M_PI        3.141592653589793238462     // acos(-1.0)
 #endif
 
 #ifndef M_PI_2
-    #define M_PI_2    1.570796326794896619231   // M_PI/2
+#define M_PI_2      1.570796326794896619231     // M_PI/2
 #endif
 
 #ifndef M_RD
-  #define M_RD       0.017453292519943295769    // 弧度(radian)
-  #define M_INV_RD  57.295779513082320876798    // 弧度的倒数(reciprocal) 1.0 / M_RD
+#define M_RD        0.017453292519943295769     // 弧度 (radian)
+#define M_INV_RD    57.295779513082320876798    // 弧度的倒数 (reciprocal) 1.0 / M_RD
 #endif
 
 // 判断数值是否是 0
@@ -245,21 +254,10 @@ inline double rand_real(double a, double b)
     return a + (b - a) * rand_real();
 }
 
-// 获得向量的弧度
-inline double radian(double x, double y)
-{
-    double n = 0.0;
-    if(!is_zero(y)){
-        n = M_PI_2 - std::atan(x / y);//根据斜率求弧度，反向
-        if(y < 0.0)n += M_PI;
-    }
-    return n;
-}
-
 // 计算点 [x, y] 到原点的角度
 inline double angle(double x, double y)
 {
-    return radian(x, y) * M_INV_RD;
+    return atan2(y, x) * M_INV_RD;
 }
 
 /****************************************************************************
@@ -327,8 +325,8 @@ class vec2
 public:
     T x, y;
 
-    vec2() : x(), y() { }
-    vec2(T _x, T _y) : x(_x), y(_y) { }
+    vec2() : x(), y() {}
+    vec2(T _x, T _y) : x(_x), y(_y) {}
 
     vec2& operator=(const vec2& other)
     {
@@ -340,11 +338,11 @@ public:
     vec2& set(T _x, T _y) { x = _x; y = _y; return *this; }
 
     VEC2_OPERATION(+)
-    VEC2_OPERATION(-)
-    VEC2_OPERATION(*)
-    VEC2_OPERATION(/)
+        VEC2_OPERATION(-)
+        VEC2_OPERATION(*)
+        VEC2_OPERATION(/ )
 
-    bool operator==(const vec2& other)const
+        bool operator==(const vec2& other)const
     {
         return is_equal(x, other.x) && is_equal(y, other.y);
     }
@@ -359,14 +357,15 @@ template<typename T>
 class vec4
 {
 public:
-    union{
-        struct{ T x, y, z, w; }; // 空间坐标
-        struct{ T b, g, r, a; }; // 颜色分量 (GDI 使用的是 BGRA)
-        struct{ T _x, _y, width, height; }; // 矩形
+    union
+    {
+        struct { T x, y, z, w; }; // 空间坐标
+        struct { T b, g, r, a; }; // 颜色分量 (GDI 使用的是 BGRA)
+        struct { T _x, _y, width, height; }; // 矩形
     };
 
-    vec4() : x(), y(), z(), w() { }
-    vec4(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
+    vec4() : x(), y(), z(), w() {}
+    vec4(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) {}
 
     vec4& set(T _x, T _y, T _z, T _w) { x = _x; y = _y; z = _z; w = _w; return *this; }
 
@@ -379,7 +378,7 @@ public:
     {
         int max_x = max(a.x, b.x);
         int max_y = max(a.y, b.y);
-        return vec4(max_x, max_y, min(a.x + a.width, b.x + b.width)-max_x, min(a.y + a.height, b.y + b.height)-max_y);
+        return vec4(max_x, max_y, min(a.x + a.width, b.x + b.width) - max_x, min(a.y + a.height, b.y + b.height) - max_y);
     }
 };
 
@@ -420,14 +419,19 @@ inline vec2<T> normalize(const vec2<T>& v)
     return vec2(v.x * n, v.y * n);
 }
 
-// 旋转向量
+// 旋转向量（角度）
 template<typename T>
 inline vec2<T> rotate(const vec2<T>& v, T angle)
 {
+    angle *= M_RD;
     T sine = sin(angle);
     T cosine = cos(angle);
-    return vec2<T>(v.x * cosine - v.y * sine, v.y * cosine + v.x * sine);
+    return vec2<T>(
+        v.x * cosine - v.y * sine,
+        v.x * sine + v.y * cosine);
 }
+
+
 
 // 计算角度
 template<typename T>
@@ -439,16 +443,15 @@ inline T angle(const vec2<T>& v)
 #else
 
 #if !defined(GLM_HPP_20211019161738)
-namespace cgl
-{
-	typedef glm::ivec2      vec2i;
-	typedef glm::vec2       vec2f;
-	typedef glm::dvec2      vec2d;
-	
-	typedef glm::u8vec4     vec4ub;
-	typedef glm::ivec4      vec4i;
-	typedef glm::vec4       vec4f;
-	typedef glm::dvec4      vec4d;
+namespace cgl {
+typedef glm::ivec2      vec2i;
+typedef glm::vec2       vec2f;
+typedef glm::dvec2      vec2d;
+
+typedef glm::u8vec4     vec4ub;
+typedef glm::ivec4      vec4i;
+typedef glm::vec4       vec4f;
+typedef glm::dvec4      vec4d;
 }
 #endif
 
@@ -468,14 +471,6 @@ using cgl::vec4d;
  *                                  图片类                                  *
  *                                                                          *
  ****************************************************************************/
-
-class ezColor : public Gdiplus::Color
-{
-public:
-    ezColor() : Gdiplus::Color() {}
-    ezColor(uint32_t color) : Gdiplus::Color(color) {}
-    ezColor(byte_t r, byte_t g, byte_t b, byte_t a = 255) : Gdiplus::Color(a, r, g, b) {}
-};
 
 class ezImage
 {
@@ -690,7 +685,8 @@ void framebuf_blt(HDC hdc);
 
 /* 设置显示质量
  */
-enum {
+enum
+{
     EZ_SPEED,       // 速度优先
     EZ_MEDIUM,      // 中等质量
     EZ_QUALITY,     // 质量优先
@@ -720,9 +716,14 @@ COLORREF pen_color();
  */
 void pen_width(float width);
 
+/* 获取画笔宽度
+ */
+float pen_width();
+
 /* 画笔模式
  */
-enum{
+enum
+{
     EZ_SOLID,       // 实心画笔（默认）
     EZ_DASH,        // -------
     EZ_DOT,         // .......
@@ -845,12 +846,13 @@ void fill_polygon(const vec2f* points, size_t size);
 
 /* 字体样式，可以任意组合
  */
-enum EZGDI_FONTSTYLE{
-    EZ_NORMAL       = 0,    // 普通字体
-    EZ_BOLD         = 1,    // 粗体
-    EZ_ITALIC       = 2,    // 斜体
-    EZ_UNDERLINE    = 4,    // 下划线
-    EZ_STRIKEOUT    = 8     // 删除线
+enum EZGDI_FONTSTYLE
+{
+    EZ_NORMAL = 0,    // 普通字体
+    EZ_BOLD = 1,    // 粗体
+    EZ_ITALIC = 2,    // 斜体
+    EZ_UNDERLINE = 4,    // 下划线
+    EZ_STRIKEOUT = 8     // 删除线
 };
 
 /* 设置字体
