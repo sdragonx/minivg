@@ -1,4 +1,4 @@
-/*
+ï»¿/*
  Copyright (c) 2005-2020 sdragonx (mail:sdragonx@foxmail.com)
 
  minivg.inl
@@ -9,7 +9,7 @@
 #ifndef MINIVG_INL_20200708233153
 #define MINIVG_INL_20200708233153
 
-//#include "minivg.hpp"
+#include "minivg.hpp"
 
 #include <stdio.h>
 #include <tchar.h>
@@ -18,55 +18,66 @@
 #include <windows.h>
 #include <windowsx.h>
 #include <mmsystem.h>
-#include <ole2.h>               // CreateStreamOnHGlobal
+#include <ole2.h> // CreateStreamOnHGlobal
 
 #if __cplusplus < 201103L
     #define nullptr NULL
 #endif
 
-#ifdef __GNUC
-    #define __MT__
+;
+#ifdef __GNUC__
+    // #define __MT__
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wmissing-field-initializers" // missing initializer for member (c++11 struct = { 0 })
 #endif
 
 #ifdef _MSC_VER
-    #pragma warning(disable: 4717)
+    #pragma warning(disable : 4717)
 #endif
 
 #include <process.h>
 
 #if defined(__BORLANDC__) || defined(_MSC_VER)
-#pragma comment (lib, "gdiplus.lib")
-#pragma comment (lib, "winmm.lib")
-#pragma comment (lib, "ole32.lib")
+    #pragma comment(lib, "gdiplus.lib")
+    #pragma comment(lib, "winmm.lib")
+    #pragma comment(lib, "ole32.lib")
 #endif
 
-#define MINIVG_VERSION       PCWSTR(L"minivg 2021-07-30")
+#define MINIVG_VERSION PCWSTR(L"minivg 2021-07-30")
 
-#define MINIVG_CLASS_NAME    PCWSTR(L"minivg_window")
-#define MINIVG_DEFAULT_FONT  PCWSTR(L"msyh")                // Î¢ÈíÑÅºÚ
+#define MINIVG_CLASS_NAME   PCWSTR(L"minivg_window")   // çª—å£ç±»å
+#define MINIVG_DEFAULT_FONT PCWSTR(L"Microsoft YaHei") // å¾®è½¯é›…é»‘
 
-#define MINIVG_TIMER_ID      1
+#define MINIVG_TIMER_ID 1
 
 #define MINIVG_INLINE inline
 
 namespace minivg {
 namespace detail {
 
-// »ñÈ¡¸¡µãÊ±¼ä´Á
+// è·å–æµ®ç‚¹æ—¶é—´æˆ³
 inline float tick_time()
 {
-    return static_cast<float>(clock()) * 0.001f;
+    return static_cast<float>(clock()) / static_cast<float>(CLOCKS_PER_SEC);
 }
 
 //---------------------------------------------------------------------------
-//
-// ×ÊÔ´¹ÜÀíÀà
-//
+// èµ„æºç®¡ç†ç±»
 //---------------------------------------------------------------------------
 
-// °²È«É¾³ıÖ¸Õë
+// å•ä¾‹ç±»
 template<typename T>
-void safe_delete(T* &p)
+struct singleton
+{
+    static T instance;
+};
+
+template<typename T>
+T singleton<T>::instance = T();
+
+// å®‰å…¨åˆ é™¤æŒ‡é’ˆ
+template<typename T>
+void safe_delete(T*& p)
 {
     if (p) {
         delete p;
@@ -74,6 +85,7 @@ void safe_delete(T* &p)
     }
 }
 
+// å®‰å…¨åˆ é™¤ GDI å¯¹è±¡
 template<typename T>
 void delete_object(T& obj)
 {
@@ -81,7 +93,7 @@ void delete_object(T& obj)
     obj = NULL;
 }
 
-// É¾³ıstlÈİÆ÷ÀïÃæµÄÄÚÈİ
+// åˆ é™¤ stl å®¹å™¨é‡Œé¢çš„å†…å®¹
 template<typename T>
 void delete_all(T& obj)
 {
@@ -92,48 +104,49 @@ void delete_all(T& obj)
     obj.clear();
 }
 
-// ´´½¨Ò»¸ö HBITMAP
+// åˆ›å»ºä¸€ä¸ªæ”¯æŒ Alpha çš„ HBITMAP
 MINIVG_INLINE HBITMAP bm_create(int width, int height, int pixelbits = 32)
 {
     HBITMAP hBitmap;
     BITMAPV5HEADER bi;
-    void *lpBits = 0;
+    void* lpBits = 0;
 
     ZeroMemory(&bi, sizeof(BITMAPV5HEADER));
-    bi.bV5Size = sizeof(BITMAPV5HEADER);
-    bi.bV5Width = width;
-    bi.bV5Height = height;
-    bi.bV5Planes = 1;
-    bi.bV5BitCount = pixelbits;
+    bi.bV5Size        = sizeof(BITMAPV5HEADER);
+    bi.bV5Width       = width;
+    bi.bV5Height      = height;
+    bi.bV5Planes      = 1;
+    bi.bV5BitCount    = pixelbits;
     bi.bV5Compression = BI_BITFIELDS;
-    bi.bV5RedMask = 0x00FF0000;
-    bi.bV5GreenMask = 0x0000FF00;
-    bi.bV5BlueMask = 0x000000FF;
-    bi.bV5AlphaMask = 0xFF000000;
+    bi.bV5RedMask     = 0x00FF0000;
+    bi.bV5GreenMask   = 0x0000FF00;
+    bi.bV5BlueMask    = 0x000000FF;
+    bi.bV5AlphaMask   = 0xFF000000;
 
-    hBitmap = CreateDIBSection(GetDC(nullptr), (BITMAPINFO *) &bi, DIB_RGB_COLORS, (void **) &lpBits, nullptr, (DWORD) 0);
+    hBitmap = CreateDIBSection(GetDC(nullptr), (BITMAPINFO*) &bi, DIB_RGB_COLORS, (void**) &lpBits, nullptr, (DWORD) 0);
 
     return hBitmap;
 }
 
-// ×ÊÔ´¹ÜÀíÀà
-class ezResource
+// èµ„æºç®¡ç†ç±»
+
+class vgResource
 {
 private:
-    std::map<unistring, ezImage*> images;       // ¼ÓÔØµÄÍ¼Æ¬
-    std::map<int, ezImage*> resource_images;    // ¼ÓÔØµÄ×ÊÔ´Í¼Æ¬
-    std::vector<ezImage*> image_pool;           // ´´½¨µÄÍ¼Æ¬
+    std::map<unistring, vgImage*> images;    // åŠ è½½çš„å›¾ç‰‡
+    std::map<int, vgImage*> resource_images; // åŠ è½½çš„èµ„æºå›¾ç‰‡
+    std::vector<vgImage*> image_pool;        // åˆ›å»ºçš„å›¾ç‰‡
 
 public:
-    // ¼ÓÔØÒ»¸öÍ¼Æ¬
-    ezImage* loadimage(const unistring& name)
+    // åŠ è½½ä¸€ä¸ªå›¾ç‰‡
+    vgImage* loadimage(const unistring& name)
     {
-        ezImage* bmp = nullptr;
-        std::map<unistring, ezImage*>::iterator itr;
+        vgImage* bmp = nullptr;
+        std::map<unistring, vgImage*>::iterator itr;
         itr = images.find(name);
         if (itr == images.end()) {
-            bmp = new ezImage;
-            if (bmp->open(name) == EZ_OK) {
+            bmp = new vgImage;
+            if (bmp->open(name) == VG_OK) {
                 images[name] = bmp;
             }
             else {
@@ -146,15 +159,15 @@ public:
         return bmp;
     }
 
-    // ¼ÓÔØ×ÊÔ´Í¼Æ¬
-    ezImage* loadimage(int id, PCTSTR resource_type)
+    // åŠ è½½èµ„æºå›¾ç‰‡
+    vgImage* loadimage(int id, PCTSTR resource_type)
     {
-        ezImage* bmp = nullptr;
-        std::map<int, ezImage*>::iterator itr;
+        vgImage* bmp = nullptr;
+        std::map<int, vgImage*>::iterator itr;
         itr = resource_images.find(id);
         if (itr == resource_images.end()) {
-            bmp = new ezImage;
-            if (bmp->open(id, resource_type) == EZ_OK) {
+            bmp = new vgImage;
+            if (bmp->open(id, resource_type) == VG_OK) {
                 resource_images[id] = bmp;
             }
             else {
@@ -167,27 +180,28 @@ public:
         return bmp;
     }
 
-    // ´´½¨Í¼Æ¬
-    ezImage* allocate(int width, int height)
+    // åˆ›å»ºå›¾ç‰‡
+    vgImage* allocate(int width, int height)
     {
-        ezImage *image = new ezImage();
+        vgImage* image = new vgImage();
         image->create(width, height);
         image_pool.push_back(image);
         return image;
     }
 
-    // É¾³ıÍ¼Æ¬
-    void free(ezImage* image)
+    // åˆ é™¤å›¾ç‰‡
+    void free(vgImage* image)
     {
-        std::vector<ezImage*>::iterator itr = std::find(
-            image_pool.begin(), image_pool.end(), image);
+        std::vector<vgImage*>::iterator itr = std::find(
+            image_pool.begin(), image_pool.end(), image
+        );
         if (itr != image_pool.end()) {
             delete *itr;
             image_pool.erase(itr);
         }
     }
 
-    // ÊÍ·ÅËùÓĞ×ÊÔ´£¬Õâ¸öº¯ÊıÔÚ³ÌĞòÍË³öµÄÊ±ºòÖ´ĞĞ
+    // é‡Šæ”¾æ‰€æœ‰èµ„æºï¼Œè¿™ä¸ªå‡½æ•°åœ¨ç¨‹åºé€€å‡ºçš„æ—¶å€™æ‰§è¡Œ
     void dispose()
     {
         delete_all(images);
@@ -201,58 +215,65 @@ public:
 };
 
 //---------------------------------------------------------------------------
-//
-// ½çÃæ
-//
+// ç•Œé¢
 //---------------------------------------------------------------------------
 
-class ezWindow
+// win32 çª—å£ç±»
+class vgWindow
 {
 protected:
     HWND m_handle;
 
 public:
-    ezWindow() : m_handle() {}
+    vgWindow() :
+        m_handle() { }
 
-    HWND handle()const { return m_handle; }
+    HWND handle() const { return m_handle; }
 
     int create(
         PCWSTR className,
         PCWSTR title,
         int x, int y, int width, int height,
-        DWORD style = WS_OVERLAPPEDWINDOW,
-        DWORD styleEx = 0)
+        DWORD style   = WS_OVERLAPPEDWINDOW,
+        DWORD styleEx = 0
+    )
     {
+        // æ³¨å†Œçª—å£ç±»
         // 2023-03-12 23:08:02 bug
-        /*static bool is_init = false;
+        /*
+        static bool is_init = false;
         if (!is_init) {
             InitClass(className, 0, basic_wndproc);
             is_init = true;
-        }*/
+        }
+        */
         init_window_class(className, basic_wndproc);
 
+        // clang-format off
         #ifndef UNICODE
         std::string buf = to_ansi(title, -1);
-        title = (PCWSTR) buf.c_str();
+        title           = (PCWSTR) buf.c_str();
         #endif
+        // clang-format on
 
-        // »ñÈ¡µ±Ç°½ø³Ì¾ä±ú
+        // è·å–å½“å‰è¿›ç¨‹å¥æŸ„
         HINSTANCE hModule = GetModuleHandle(nullptr);
 
-        // ´´½¨´°¿Ú
+        // åˆ›å»ºçª—å£
         m_handle = CreateWindowExW(
-            styleEx,        // ´°¿ÚµÄÀ©Õ¹·ç¸ñ
-            className,      // ÀàÃû
-            title,          // ±êÌâ
-            style,          // ·ç¸ñ
-            x,              // ×ó±ßÎ»ÖÃ
-            y,              // ¶¥²¿Î»ÖÃ
-            width,          // ¿í¶È
-            height,         // ¸ß¶È
-            nullptr,        // ¸¸´°¿ÚµÄ¾ä±ú
-            nullptr,        // ²Ëµ¥µÄ¾ä±ú»òÊÇ×Ó´°¿ÚµÄ±êÊ¶·û
-            hModule,        // Ó¦ÓÃ³ÌĞòÊµÀıµÄ¾ä±ú
-            this);          // Ö¸Ïò´°¿ÚµÄ´´½¨Êı¾İ
+            styleEx,   // çª—å£çš„æ‰©å±•é£æ ¼
+            className, // ç±»å
+            title,     // æ ‡é¢˜
+            style,     // é£æ ¼
+            x,         // å·¦è¾¹ä½ç½®
+            y,         // é¡¶éƒ¨ä½ç½®
+            width,     // å®½åº¦
+            height,    // é«˜åº¦
+            nullptr,   // çˆ¶çª—å£çš„å¥æŸ„
+            nullptr,   // èœå•çš„å¥æŸ„æˆ–æ˜¯å­çª—å£çš„æ ‡è¯†ç¬¦
+            hModule,   // åº”ç”¨ç¨‹åºå®ä¾‹çš„å¥æŸ„
+            this       // æŒ‡å‘çª—å£çš„åˆ›å»ºæ•°æ®
+        );
 
         if (m_handle == nullptr) {
             MessageBox(nullptr, TEXT("Window Creation Failed!"), TEXT("Error!"), MB_ICONEXCLAMATION | MB_OK);
@@ -262,42 +283,43 @@ public:
         return 0;
     }
 
-    // ¹Ø±Õ´°¿Ú
+    // å…³é—­çª—å£
     void close()
     {
         SendMessage(m_handle, WM_CLOSE, 0, 0);
     }
 
-    // ÉèÖÃ´°¿Ú·¶Î§
+    // è®¾ç½®çª—å£èŒƒå›´
     void setBounds(int x, int y, int width, int height)
     {
         MoveWindow(m_handle, x, y, width, height, TRUE);
     }
 
-    // ÒÆ¶¯´°¿Ú
+    // ç§»åŠ¨çª—å£
     void move(int x, int y)
     {
         SetWindowPos(m_handle, nullptr, x, y, 0, 0, SWP_NOSIZE);
     }
 
-    // ÉèÖÃ´°¿Ú´óĞ¡
+    // è®¾ç½®çª—å£å¤§å°
     void resize(int width, int height)
     {
         SetWindowPos(m_handle, nullptr, 0, 0, width, height, SWP_NOMOVE);
     }
 
-    // ÏÔÊ¾´°¿Ú
+    // æ˜¾ç¤ºçª—å£
     void show()
     {
         ShowWindow(m_handle, SW_SHOW);
     }
 
-    // Òş²Ø´°¿Ú
+    // éšè—çª—å£
     void hide()
     {
         ShowWindow(m_handle, SW_HIDE);
     }
 
+    // æ˜¾ç¤ºæ¨¡å¼çª—å£
     int showModel(HWND owner)
     {
         if (!m_handle) {
@@ -324,20 +346,23 @@ public:
         return int(msg.wParam);
     }
 
-    void setID(int id) { SetWindowLong(m_handle, GWL_ID, id); }
-
+    // è®¾ç½®çª—å£æ ‡é¢˜
     void setTitle(const unistring& text)
     {
+        // clang-format off
         #ifdef UNICODE
         SetWindowTextW(m_handle, text.c_str());
         #else
         std::string buf = to_ansi(text.c_str(), text.length());
         SetWindowTextW(m_handle, (PCWSTR) buf.c_str());
         #endif
+        // clang-format on
     }
 
-    unistring title()const
+    // è¿”å›çª—å£æ ‡é¢˜
+    unistring title() const
     {
+        // clang-format off
         #ifdef UNICODE
         int size = GetWindowTextLengthW(m_handle);
         std::vector<wchar_t> buf;
@@ -351,14 +376,17 @@ public:
         GetWindowTextW(m_handle, (wchar_t*) &buf[0], size + 1);
         return unistring(&buf[0], size);
         #endif
+        // clang-format on
     }
 
+    // è®¾ç½®çª—å£æ–‡å­—(ç¼–è¾‘æ¡†)
     void setText(const unistring& text)
     {
         SetWindowTextW(m_handle, text.c_str());
     }
 
-    unistring text()const
+    // è¿”å›çª—å£æ–‡å­—(ç¼–è¾‘æ¡†)
+    unistring text() const
     {
         int size = GetWindowTextLengthW(m_handle);
         std::vector<wchar_t> buf;
@@ -367,22 +395,28 @@ public:
         return unistring(&buf[0], size);
     }
 
+    // è®¾ç½®æ§ä»¶ ID
+    void setID(int id) { SetWindowLongPtr(m_handle, GWL_ID, id); }
+
+    // å‘é€æ§ä»¶æ¶ˆæ¯
     LRESULT send(int id, UINT msg, WPARAM wParam, LPARAM lParam)
     {
         return SendDlgItemMessage(m_handle, id, msg, wParam, lParam);
     }
 
+    // è®¾ç½®å­—ä½“
     void setFont(HFONT hFont)
     {
         SendMessage(m_handle, WM_SETFONT, (WPARAM) hFont, TRUE);
     }
 
-    //Õâ¸öº¯Êı²»¹¤×÷
+    // è·å–å­—ä½“
     HFONT getFont()
     {
         return (HFONT) (UINT_PTR) SendMessage(m_handle, WM_GETFONT, 0, 0);
     }
 
+    // é‡ç»˜çª—å£
     void repaint()
     {
         RECT rc;
@@ -393,13 +427,13 @@ public:
 protected:
     static LRESULT CALLBACK basic_wndproc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
-        ezWindow *win = reinterpret_cast<ezWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+        vgWindow* win = reinterpret_cast<vgWindow*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
         if (win) {
             return win->wndproc(msg, wparam, lparam);
         }
         else if (msg == WM_CREATE) {
             LPCREATESTRUCTW pcs = LPCREATESTRUCTW(lparam);
-            win = reinterpret_cast<ezWindow*>(pcs->lpCreateParams);
+            win                 = reinterpret_cast<vgWindow*>(pcs->lpCreateParams);
             if (win) {
                 win->m_handle = hwnd;
                 ::SetLastError(ERROR_SUCCESS);
@@ -424,67 +458,70 @@ protected:
         }
     }
 
+    // ä¿®æ”¹çª—å£æ ·å¼
     void MotifyStyle(DWORD style, bool enable)
     {
         if (enable) {
-            SetWindowLong(m_handle, GWL_STYLE, GetWindowLong(m_handle, GWL_STYLE) | style);
+            SetWindowLongPtr(m_handle, GWL_STYLE, GetWindowLongPtr(m_handle, GWL_STYLE) | style);
         }
         else {
-            SetWindowLong(m_handle, GWL_STYLE, GetWindowLong(m_handle, GWL_STYLE) & (~style));
+            SetWindowLongPtr(m_handle, GWL_STYLE, GetWindowLongPtr(m_handle, GWL_STYLE) & (~style));
         }
     }
 
-    // ´´½¨¿Ø¼ş
-    HWND CreateComponent(ezWindow* parent, PCWSTR classname, int x, int y, int width, int height, int style, int styleEx = 0)
+    // åˆ›å»ºæ§ä»¶
+    HWND CreateComponent(vgWindow* parent, PCWSTR classname, int x, int y, int width, int height, int style, int styleEx = 0)
     {
-        HWND hwnd = CreateWindowExW(styleEx, classname, nullptr, style,
-            x, y, width, height, parent->handle(), (HMENU) nullptr, GetModuleHandle(nullptr), nullptr);
+        HWND hwnd = CreateWindowExW(styleEx, classname, nullptr, style, x, y, width, height, parent->handle(), (HMENU) nullptr, GetModuleHandle(nullptr), nullptr);
 
         HFONT font = (HFONT) GetStockObject(DEFAULT_GUI_FONT);
         SendMessage(hwnd, WM_SETFONT, (WPARAM) font, 0);
         return hwnd;
     }
 
-    // ³õÊ¼»¯´°¿ÚÀà
-    BOOL init_window_class(LPCWSTR classname, WNDPROC WndProc)
+    // åˆå§‹åŒ–çª—å£ç±»
+    static ATOM init_window_class(LPCWSTR classname, WNDPROC wndproc)
     {
         HINSTANCE hInstance = GetModuleHandle(nullptr);
 
-        WNDCLASSEXW wc = { sizeof(wc) };
-        if (GetClassInfoExW(hInstance, classname, &wc)) {
-            //printf("class is exists.\n");
+        WNDCLASSEXW wc = { 0 };
+        ATOM atom      = GetClassInfoExW(hInstance, classname, &wc);
+        if (atom) {
+            // printf("class is exists: atom = %d\n", atom);
         }
         else {
-            wc.style = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS;// CS_DBLCLKS Ö§³ÖÊó±êË«»÷ÊÂ¼ş
-            wc.lpfnWndProc = WndProc;
-            wc.hInstance = hInstance;
-            wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
+            wc.cbSize        = sizeof(wc);
+            wc.style         = CS_HREDRAW | CS_VREDRAW | CS_DBLCLKS; // CS_DBLCLKS æ”¯æŒé¼ æ ‡åŒå‡»äº‹ä»¶
+            wc.lpfnWndProc   = wndproc;
+            wc.hInstance     = hInstance;
+            wc.hCursor       = LoadCursor(nullptr, IDC_ARROW);
             wc.hbrBackground = (HBRUSH) (COLOR_WINDOW);
             wc.lpszClassName = classname;
-            wc.hIcon = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
-            wc.hIconSm = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
+            wc.hIcon         = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
+            wc.hIconSm       = LoadIcon(hInstance, TEXT("IDI_APPLICATION"));
 
-            ATOM atom = RegisterClassExW(&wc);
+            atom = RegisterClassExW(&wc);
 
             if (!atom) {
                 MessageBox(nullptr, TEXT("Register Window Class Failed!"), TEXT("Error!"), MB_OK | MB_ICONEXCLAMATION);
-                return FALSE;
+                return 0;
             }
 
-            //printf("register class success.\n");
+            // printf("register class success: atom = %d\n", atom);
         }
 
-        return TRUE;
+        return atom;
     }
 };
 
-class ezButton : public ezWindow
+// æŒ‰é’®
+class vgButton : public vgWindow
 {
 public:
-    int create(ezWindow* parent, int x, int y, int width, int height)
+    int create(vgWindow* parent, int x, int y, int width, int height)
     {
         DWORD style = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON;
-        m_handle = CreateComponent(parent, L"button", x, y, width, height, style);
+        m_handle    = CreateComponent(parent, L"button", x, y, width, height, style);
         return 0;
     }
 
@@ -494,24 +531,26 @@ public:
     }
 };
 
-class ezLabel : public ezWindow
+// æ ‡ç­¾
+class vgLabel : public vgWindow
 {
 public:
-    int create(ezWindow* parent, int x, int y, int width, int height)
+    int create(vgWindow* parent, int x, int y, int width, int height)
     {
         DWORD style = WS_CHILD | WS_VISIBLE | SS_EDITCONTROL;
-        m_handle = CreateComponent(parent, L"static", x, y, width, height, style);
+        m_handle    = CreateComponent(parent, L"static", x, y, width, height, style);
         return 0;
     }
 };
 
-class ezEdit : public ezWindow
+// ç¼–è¾‘æ¡†
+class vgEdit : public vgWindow
 {
 public:
-    int create(ezWindow* parent, int x, int y, int width, int height)
+    int create(vgWindow* parent, int x, int y, int width, int height)
     {
         DWORD style = WS_CHILD | WS_VISIBLE | ES_AUTOHSCROLL | ES_AUTOVSCROLL;
-        m_handle = CreateComponent(parent, L"edit", x, y, width, height, style, WS_EX_CLIENTEDGE);
+        m_handle    = CreateComponent(parent, L"edit", x, y, width, height, style, WS_EX_CLIENTEDGE);
         return 0;
     }
 
@@ -526,25 +565,23 @@ public:
     }
 };
 
-//
-// InputBox
-//
-
-class ezInputBox : private ezWindow
+// è¾“å…¥æ¡†
+class vgInputBox : private vgWindow
 {
 private:
     unistring m_message;
     unistring m_text;
     bool m_result;
 
-    ezLabel  lblMessage;
-    ezEdit   editbox;
-    ezButton btnOK;
-    ezButton btnCancel;
+    vgLabel lblMessage;
+    vgEdit editbox;
+    vgButton btnOK;
+    vgButton btnCancel;
 
 public:
     bool execute(HWND parent, const unistring& title, const unistring& message, const unistring& text = unistring())
     {
+        // è·å–å±å¹•å¤§å°
         int cx = GetSystemMetrics(SM_CXFULLSCREEN);
         int cy = GetSystemMetrics(SM_CYFULLSCREEN);
 
@@ -554,15 +591,15 @@ public:
         int y = (cy - h) / 2;
 
         m_message = message;
-        m_text = text;
-        ezWindow::create(L"EZGDI_InputBox", title.c_str(), x, y, w, h, WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS);
+        m_text    = text;
+        vgWindow::create(L"minivg_inputbox", title.c_str(), x, y, w, h, WS_CAPTION | WS_SYSMENU | WS_CLIPSIBLINGS);
 
         showModel(parent);
 
         return m_result;
     }
 
-    unistring text()const
+    unistring text() const
     {
         return m_text;
     }
@@ -580,11 +617,11 @@ protected:
         btnOK.create(this, rect.right - 70, 8, 64, 24);
         btnOK.setID(IDOK);
         btnOK.setDefault(true);
-        btnOK.setText(L"È·¶¨(&O)");
+        btnOK.setText(L"ç¡®å®š(&O)");
 
         btnCancel.create(this, rect.right - 70, 36, 64, 24);
         btnCancel.setID(IDCANCEL);
-        btnCancel.setText(L"È¡Ïû(&C)");
+        btnCancel.setText(L"å–æ¶ˆ(&C)");
 
         editbox.create(this, 4, rect.bottom - 24, rect.right - 8, 20);
         editbox.setID(2000);
@@ -644,55 +681,58 @@ protected:
 };
 
 //---------------------------------------------------------------------------
-//
-// minivg ÊµÀıÀà
-//
+// minivg å®ä¾‹ç±»
 //---------------------------------------------------------------------------
 
-template<typename T = int>
-class vgContext : public ezWindow
+class vgContext : public vgWindow
 {
 public:
-    HDC hdc;                        // GDI »æÍ¼Éè±¸
-    Gdiplus::Graphics* g;           // GDIPlus Éè±¸
-    HBITMAP pixelbuf;               // ÏñËØ»º³åÇø
+    HDC hdc;                         // GDI ç»˜å›¾è®¾å¤‡
+    Gdiplus::Graphics* g;            // GDIPlus è®¾å¤‡
+    HBITMAP pixelbuf;                // åƒç´ ç¼“å†²åŒº
 
-    int effectLevel;                // Ğ§¹ûµÈ¼¶
+    int effectLevel;                 // æ•ˆæœç­‰çº§
 
-    Gdiplus::Pen* pen;              // »­±Ê
-    Gdiplus::SolidBrush* brush;     // »­Ë¢
-    Gdiplus::Font* font;            // ×ÖÌå
-    Gdiplus::SolidBrush* font_color;
-    unistring fontName;
-    float    fontSize;
-    int      fontStyle;
-    bool     fontIsChange;
+    Gdiplus::Pen* pen;               // ç”»ç¬”
+    Gdiplus::SolidBrush* brush;      // ç”»åˆ·
+    Gdiplus::Font* font;             // å­—ä½“
+    Gdiplus::SolidBrush* font_color; // å­—ä½“é¢œè‰²
+    unistring fontName;              // å­—ä½“åå­—
+    float fontSize;                  // å­—ä½“å¤§å°
+    int fontStyle;                   // å­—ä½“æ ·å¼
+    bool fontIsChange;               // æ ‡è®°å­—ä½“å±æ€§æ˜¯å¦æ”¹å˜ï¼Œå¦‚æœå±æ€§æ”¹å˜å°±é‡æ–°åˆ›å»ºå­—ä½“
 
-    WNDPROC prevWndProc;            // Èç¹ûÊÇÉèÖÃÒÑÓĞµÄ´°¿Ú£¬±£´æÒÑÓĞ´°¿ÚµÄÏûÏ¢´¦Àíº¯Êı
+    WNDPROC prevWndProc;             // å¦‚æœæ˜¯è®¾ç½®å·²æœ‰çš„çª—å£ï¼Œä¿å­˜å·²æœ‰çª—å£çš„æ¶ˆæ¯å¤„ç†å‡½æ•°
 
-    int initParam;                  // ´´½¨²ÎÊı
-    RECT winRect;                   // ´°¿ÚÄ£Ê½ÏÂ´°¿Ú´óĞ¡
-    bool fullscreen;                // ÊÇ·ñÈ«ÆÁ
+    int initParam;                   // åˆ›å»ºå‚æ•°
+    RECT winRect;                    // çª—å£æ¨¡å¼ä¸‹çª—å£å¤§å°
+    bool fullscreen;                 // æ˜¯å¦å…¨å±
 
-    vec4i vp;                       // ÊÓ¿Ú
-    bool running;                   // ³ÌĞòÊÇ·ñÔËĞĞ
+    vec4i viewRect;                  // è§†å£
+    bool running;                    // ç¨‹åºæ˜¯å¦è¿è¡Œ
 
-    EZ_KEY_EVENT OnKeyDown;         // ¼üÅÌÊÂ¼ş
-    EZ_KEY_EVENT OnKeyUp;
-    EZ_KEY_EVENT OnKeyPress;
+    // é”®ç›˜äº‹ä»¶
+    VG_KEY_EVENT OnKeyDown;
+    VG_KEY_EVENT OnKeyUp;
+    VG_KEY_EVENT OnKeyPress;
 
-    EZ_MOUSE_EVENT OnMouseDown;     // Êó±êÊÂ¼ş
-    EZ_MOUSE_EVENT OnMouseUp;
-    EZ_MOUSE_EVENT OnMouseMove;
+    // é¼ æ ‡äº‹ä»¶
+    VG_MOUSE_EVENT OnMouseDown;
+    VG_MOUSE_EVENT OnMouseUp;
+    VG_MOUSE_EVENT OnMouseMove;
 
-    EZ_TIMER_EVENT OnTimer;         // ¼ÆÊ±Æ÷ÊÂ¼ş
+    // è®¡æ—¶å™¨äº‹ä»¶
+    VG_TIMER_EVENT OnTimer;
     float tick;
 
-    EZ_PAINT_EVENT OnPaint;         // ´°¿Ú»æÖÆÊÂ¼ş
+    // çª—å£ç»˜åˆ¶äº‹ä»¶
+    VG_PAINT_EVENT OnPaint;
 
-    ezResource resource;            // ×ÊÔ´¹ÜÀíÆ÷
+    // å¸§ç‡æ§åˆ¶
+    int fps;             // å¸§ç‡
+    float delayRequired; // å¸§ç‡éœ€è¦çš„å»¶è¿Ÿæ—¶é—´
 
-    static vgContext instance;
+    vgResource resource; // èµ„æºç®¡ç†å™¨
 
 private:
     ULONG_PTR token;
@@ -700,23 +740,25 @@ private:
 
 public:
     vgContext() :
-        ezWindow(),
+        vgWindow(),
         hdc(),
         g(),
         pixelbuf(),
-        effectLevel(EZ_MEDIUM),
+        effectLevel(VG_MEDIUM),
         pen(),
         brush(),
         font(),
         fontName(MINIVG_DEFAULT_FONT),
-        fontSize(12),
-        fontStyle(EZ_NORMAL),
+        fontSize(12.0f),
+        fontStyle(VG_NORMAL),
         running(true),
 
         OnKeyDown(), OnKeyUp(), OnKeyPress(),
         OnMouseDown(), OnMouseUp(), OnMouseMove(),
         OnTimer(),
-        OnPaint()
+        OnPaint(),
+        fps(60),
+        delayRequired(1.0f / 60.0f)
     {
         prevWndProc = nullptr;
         gdiplusInit();
@@ -729,7 +771,7 @@ public:
         gdiplusShutdown();
     }
 
-    // ÉèÖÃµ½ÒÑÓĞµÄ´°¿Ú
+    // è®¾ç½®åˆ°å·²æœ‰çš„çª—å£
     void setWindow(HWND hwnd)
     {
         if (hwnd) {
@@ -740,7 +782,7 @@ public:
         else {
             if (prevWndProc) {
                 SetWindowLongPtr(m_handle, GWLP_WNDPROC, (LONG_PTR) prevWndProc);
-                m_handle = nullptr;
+                m_handle    = nullptr;
                 prevWndProc = nullptr;
 
                 resource.dispose();
@@ -749,27 +791,27 @@ public:
         }
     }
 
-    // ÉèÖÃ±ß¿òÑùÊ½
+    // è®¾ç½®è¾¹æ¡†æ ·å¼
     void setStyle(int style)
     {
         DWORD dwStyle;
         DWORD dwExStyle;
 
         switch (style) {
-        case EZ_FIXED:
-            dwStyle = WS_POPUPWINDOW | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX;
+        case VG_FIXED:
+            dwStyle   = WS_POPUPWINDOW | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX;
             dwExStyle = WS_EX_CLIENTEDGE;
             break;
-        case EZ_SIZEABLE:
-            dwStyle = WS_OVERLAPPEDWINDOW;
+        case VG_SIZEABLE:
+            dwStyle   = WS_OVERLAPPEDWINDOW;
             dwExStyle = WS_EX_CLIENTEDGE;
             break;
-        case EZ_FULLSCREEN:
-            dwStyle = WS_POPUP;
+        case VG_FULLSCREEN:
+            dwStyle   = WS_POPUP;
             dwExStyle = 0;
             break;
         default:
-            dwStyle = WS_OVERLAPPEDWINDOW;
+            dwStyle   = WS_OVERLAPPEDWINDOW;
             dwExStyle = WS_EX_CLIENTEDGE;
             break;
         }
@@ -777,11 +819,11 @@ public:
         dwStyle |= WS_VISIBLE;
         dwExStyle |= WS_EX_APPWINDOW;
 
-        SetWindowLong(m_handle, GWL_STYLE, dwStyle);
-        SetWindowLong(m_handle, GWL_EXSTYLE, dwExStyle);
+        SetWindowLongPtr(m_handle, GWL_STYLE, dwStyle);
+        SetWindowLongPtr(m_handle, GWL_EXSTYLE, dwExStyle);
     }
 
-    // ÖØ½¨±³¾°»º³åÇø
+    // é‡å»ºèƒŒæ™¯ç¼“å†²åŒº
     void viewport(int x, int y, int width, int height)
     {
         closeGraphics();
@@ -790,23 +832,23 @@ public:
             return;
         }
 
-        if (width != vp.z || height != vp.w) {
+        if (width != viewRect[2] || height != viewRect[3]) {
             pixelbuf = bm_create(width, height);
             SelectObject(hdc, pixelbuf);
             g = new Gdiplus::Graphics(hdc);
             effect_level(effectLevel);
         }
 
-        vp = vec4i(x, y, width, height);
+        viewRect = vec4i(x, y, width, height);
     }
 
-    // ½«»º³åÇøµÄÍ¼Ïñ»æÖÆµ½Ä¿±ê HDC
+    // å°†ç¼“å†²åŒºçš„å›¾åƒç»˜åˆ¶åˆ°ç›®æ ‡ HDC
     void bitblt(HDC dc)
     {
-        BitBlt(dc, vp.x, vp.y, vp.z, vp.w, hdc, 0, 0, SRCCOPY);
+        BitBlt(dc, viewRect[0], viewRect[1], viewRect[2], viewRect[3], hdc, 0, 0, SRCCOPY);
     }
 
-    // ÉèÖÃ´°¿ÚÖÃ¶¥
+    // è®¾ç½®çª—å£ç½®é¡¶
     bool topmose(bool top)
     {
         if (top) {
@@ -817,7 +859,7 @@ public:
         }
     }
 
-    // Ö÷´°¿ÚÏûÏ¢
+    // ä¸»çª—å£æ¶ˆæ¯
     LRESULT wndproc(UINT Message, WPARAM wParam, LPARAM lParam)
     {
         switch (Message) {
@@ -837,50 +879,62 @@ public:
         case WM_SHOWWINDOW:
             this->repaint();
             break;
-        case WM_SIZE:
-            this->viewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+        case WM_SIZE: {
+            int w = LOWORD(lParam) - viewRect.x;
+            int h = HIWORD(lParam) - viewRect.y;
+            this->viewport(viewRect.x, viewRect.y, w, h);
             break;
+        }
         case WM_PAINT:
             this->OnWindowPaint();
             break;
-        case WM_TIMER:
-            {
-                float t = tick_time();
-                if (OnTimer)OnTimer(tick - t);
-                tick = t;
-            }
+        case WM_TIMER: {
+            float t = tick_time();
+            if (OnTimer)
+                OnTimer(tick - t);
+            tick = t;
             break;
-
+        }
         case WM_KEYDOWN:
-            if (OnKeyDown)OnKeyDown(int(wParam));
+            if (OnKeyDown)
+                OnKeyDown(int(wParam));
             break;
         case WM_KEYUP:
-            if (OnKeyUp)OnKeyUp(int(wParam));
+            if (OnKeyUp)
+                OnKeyUp(int(wParam));
             break;
         case WM_CHAR:
-            if (OnKeyPress)OnKeyPress(int(wParam));
+            if (OnKeyPress)
+                OnKeyPress(int(wParam));
             break;
 
         case WM_MOUSEMOVE:
-            if (OnMouseMove)OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), int(wParam) & 0x13);
+            if (OnMouseMove)
+                OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), int(wParam) & 0x13);
             break;
         case WM_LBUTTONDOWN:
-            if (OnMouseDown)OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_LEFT);
+            if (OnMouseDown)
+                OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_LEFT);
             break;
         case WM_LBUTTONUP:
-            if (OnMouseUp)OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_LEFT);
+            if (OnMouseUp)
+                OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_LEFT);
             break;
         case WM_RBUTTONDOWN:
-            if (OnMouseDown)OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_RIGHT);
+            if (OnMouseDown)
+                OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_RIGHT);
             break;
         case WM_RBUTTONUP:
-            if (OnMouseUp)OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_RIGHT);
+            if (OnMouseUp)
+                OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_RIGHT);
             break;
         case WM_MBUTTONDOWN:
-            if (OnMouseDown)OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_MIDDLE);
+            if (OnMouseDown)
+                OnMouseDown(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_MIDDLE);
             break;
         case WM_MBUTTONUP:
-            if (OnMouseUp)OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), EZ_MIDDLE);
+            if (OnMouseUp)
+                OnMouseUp(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), VG_MIDDLE);
             break;
 
         default:
@@ -891,23 +945,25 @@ public:
             return CallWindowProc(prevWndProc, m_handle, Message, wParam, lParam);
         }
         else {
-            return ezWindow::wndproc(Message, wParam, lParam);
+            return vgWindow::wndproc(Message, wParam, lParam);
         }
     }
 
 protected:
+    // åˆå§‹åŒ– Gdiplus
     void gdiplusInit()
     {
         Gdiplus::GdiplusStartup(&token, &input, nullptr);
 
-        pen = new Gdiplus::Pen(Gdiplus::Color::Black);
-        brush = new Gdiplus::SolidBrush(Gdiplus::Color::White);
-        font = new Gdiplus::Font(fontName.c_str(), 12, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint, nullptr);
+        pen        = new Gdiplus::Pen(Gdiplus::Color::Black);
+        brush      = new Gdiplus::SolidBrush(Gdiplus::Color::White);
+        font       = new Gdiplus::Font(fontName.c_str(), fontSize, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint, nullptr);
         font_color = new Gdiplus::SolidBrush(Gdiplus::Color::Black);
 
         hdc = CreateCompatibleDC(nullptr);
     }
 
+    // å…³é—­ Gdiplus
     void gdiplusShutdown()
     {
         closeGraphics();
@@ -920,6 +976,7 @@ protected:
         Gdiplus::GdiplusShutdown(token);
     }
 
+    // å…³é—­ Graphics
     void closeGraphics()
     {
         detail::safe_delete(g);
@@ -928,113 +985,135 @@ protected:
         }
     }
 
-    // ´°¿ÚÖØ»æÊÂ¼ş
+    // çª—å£é‡ç»˜äº‹ä»¶
     void OnWindowPaint()
     {
         PAINTSTRUCT ps;
         BeginPaint(m_handle, &ps);
-        if (OnPaint)OnPaint();
+        if (OnPaint)
+            OnPaint();
         this->bitblt(ps.hdc);
         EndPaint(m_handle, &ps);
     }
 };
 
-template<typename T>
-vgContext<T> vgContext<T>::instance = vgContext<T>();
-
-// ÆÁÄ»¸üĞÂÏß³Ì
-MINIVG_INLINE void updateThread(void* arg)
+// è¿”å›è®¾å¤‡ç¯å¢ƒå®ä¾‹
+MINIVG_INLINE vgContext& instance()
 {
-    while (vgContext<>::instance.running) {
-        // Ë¢ĞÂ´°¿Ú
-        vgContext<>::instance.repaint();
-    }
-
+    return singleton<vgContext>::instance;
 }
 
-}// end namespace detail
-
- //---------------------------------------------------------------------------
- //
- // Ö÷º¯Êı
- //
- //---------------------------------------------------------------------------
-
-MINIVG_INLINE int initgraph(const unistring& title, int width, int height, int param)
+// å±å¹•æ›´æ–°çº¿ç¨‹
+MINIVG_INLINE void WINAPI updateThread(void* arg)
 {
-    setlocale(LC_ALL, "chs");                   // c ÖĞÎÄ»·¾³
-    std::locale::global(std::locale("chs"));    // c++ ÖĞÎÄ»·¾³
+    (void) arg;
 
-    // ±£´æ´´½¨²ÎÊı
-    detail::vgContext<>::instance.initParam = param;
+    float lastTime = tick_time();
+    while (singleton<vgContext>::instance.running) {
+        // å¸§ç‡æ§åˆ¶
+        const float delay = singleton<vgContext>::instance.delayRequired;
+        if (delay > 0.0f) {
+            float t = tick_time();
+            if (t - lastTime >= delay) {
+                lastTime = t;
+                // åˆ·æ–°çª—å£
+                singleton<vgContext>::instance.repaint();
+            }
+            else {
+                Sleep(1); // Sleep() ç²¾åº¦æ¯”è¾ƒä½ï¼Œæš‚æ—¶ä½¿ç”¨è¿™ä¸ª
+            }
+        }
+        else {
+            // åˆ·æ–°çª—å£ (æ— å¸§ç‡é™åˆ¶)
+            singleton<vgContext>::instance.repaint();
+        }
+    }
+}
 
-    if (param & EZ_BACKBUFFER) {
-        detail::vgContext<>::instance.viewport(0, 0, width, height);
-        detail::vgContext<>::instance.winRect.left = 0;
-        detail::vgContext<>::instance.winRect.top = 0;
-        detail::vgContext<>::instance.winRect.right = width;
-        detail::vgContext<>::instance.winRect.bottom = height;
+} // end namespace detail
+
+//---------------------------------------------------------------------------
+// ä¸»å‡½æ•°
+//---------------------------------------------------------------------------
+
+MINIVG_INLINE int
+initgraph(const unistring& title, int width, int height, int param)
+{
+    setlocale(LC_ALL, "chs"); // c ä¸­æ–‡ç¯å¢ƒ
+    // std::locale::global(std::locale("zh_CN"));    // c++ ä¸­æ–‡ç¯å¢ƒ
+
+    // ä¿å­˜åˆ›å»ºå‚æ•°
+    detail::instance().initParam = param;
+
+    // åˆ›å»ºç¼“å†²åŒºæ¨¡å¼
+    if (param & VG_BACKBUFFER) {
+        detail::instance().viewport(0, 0, width, height);
+        detail::instance().winRect.left   = 0;
+        detail::instance().winRect.top    = 0;
+        detail::instance().winRect.right  = width;
+        detail::instance().winRect.bottom = height;
     }
     else {
-        // »ñµÃÆÁÄ»´óĞ¡
+        // åˆ›å»ºçª—å£æ¨¡å¼
+
+        // è·å–å±å¹•å¤§å°
         int cx = GetSystemMetrics(SM_CXFULLSCREEN);
         int cy = GetSystemMetrics(SM_CYFULLSCREEN);
 
-        // ¾ÓÖĞÏÔÊ¾
+        // å±…ä¸­æ˜¾ç¤º
         if (width < cx) {
             cx = (cx - width) / 2;
         }
         else {
             width = cx;
-            cx = 0;
+            cx    = 0;
         }
         if (height < cy) {
             cy = (cy - height) / 2;
         }
         else {
             height = cy;
-            cy = 0;
+            cy     = 0;
         }
 
-        // ÉèÖÃ´°¿ÚÑùÊ½
+        // è®¾ç½®çª—å£æ ·å¼
         DWORD dwStyle;
         DWORD dwExStyle;
 
         switch (param) {
-        case EZ_FIXED:
-            dwStyle = WS_POPUPWINDOW | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX;
+        case VG_SIZEABLE:
+            dwStyle   = WS_OVERLAPPEDWINDOW;
             dwExStyle = WS_EX_CLIENTEDGE;
             break;
-        case EZ_SIZEABLE:
-            dwStyle = WS_OVERLAPPEDWINDOW;
-            dwExStyle = WS_EX_CLIENTEDGE;
-            break;
-        case EZ_FULLSCREEN:
-            cx = cy = 0;
-            width = GetSystemMetrics(SM_CXSCREEN);
-            height = GetSystemMetrics(SM_CYSCREEN);
-            dwStyle = WS_POPUP;
+        case VG_FULLSCREEN:
+            cx = cy   = 0;
+            width     = GetSystemMetrics(SM_CXSCREEN);
+            height    = GetSystemMetrics(SM_CYSCREEN);
+            dwStyle   = WS_POPUP;
             dwExStyle = 0;
+            break;
+        case VG_FIXED:
+        default:
+            dwStyle   = WS_POPUPWINDOW | WS_SYSMENU | WS_CAPTION | WS_MINIMIZEBOX;
+            dwExStyle = WS_EX_CLIENTEDGE;
             break;
         }
 
-        // ¼ÆËã´°¿Ú´óĞ¡
+        // è®¡ç®—çª—å£å¤§å°
         RECT rect = { 0, 0, static_cast<LONG>(width), static_cast<LONG>(height) };
         AdjustWindowRectEx(&rect, dwStyle, FALSE, WS_EX_CLIENTEDGE);
-        width = static_cast<int>(rect.right - rect.left);
+        width  = static_cast<int>(rect.right - rect.left);
         height = static_cast<int>(rect.bottom - rect.top);
 
         OffsetRect(&rect, cx, cy);
-        detail::vgContext<>::instance.winRect = rect;
+        detail::instance().winRect = rect;
 
-        // ´´½¨Ò»¸ö´°¿Ú
-        detail::vgContext<>::instance.create(MINIVG_CLASS_NAME, title.c_str(),
-            cx, cy, width, height,
-            dwStyle, dwExStyle);
+        // åˆ›å»ºä¸€ä¸ªçª—å£
+        detail::instance().create(MINIVG_CLASS_NAME, title.c_str(), cx, cy, width, height, dwStyle, dwExStyle);
 
-        detail::vgContext<>::instance.show();
+        detail::instance().show();
 
-        // Æô¶¯Ë¢ĞÂÏß³Ì
+        // å¯åŠ¨åˆ·æ–°çº¿ç¨‹
         CreateThread(0, 0, (LPTHREAD_START_ROUTINE) detail::updateThread, nullptr, 0, 0);
     }
 
@@ -1048,40 +1127,42 @@ MINIVG_INLINE int initgraph(int width, int height, int param)
 
 MINIVG_INLINE int initgraph(HWND hwnd)
 {
-    setlocale(LC_ALL, "");                  // c ÖĞÎÄ
-    std::locale::global(std::locale(""));   // c++ ÖĞÎÄ
+    setlocale(LC_ALL, "");                // c ä¸­æ–‡
+    std::locale::global(std::locale("")); // c++ ä¸­æ–‡
 
-    // ÉèÖÃÍ¼ĞÎ¿â´°¿Ú
-    detail::vgContext<>::instance.setWindow(hwnd);
-    detail::vgContext<>::instance.show();
+    // è®¾ç½®å›¾å½¢åº“çª—å£
+    detail::instance().setWindow(hwnd);
+    detail::instance().show();
 
     return 0;
 }
 
 MINIVG_INLINE void quit()
 {
-    if (detail::vgContext<>::instance.prevWndProc) {
-        detail::vgContext<>::instance.setWindow(nullptr);
+    if (detail::instance().prevWndProc) {
+        detail::instance().setWindow(nullptr);
     }
     else {
-        detail::vgContext<>::instance.close();
+        detail::instance().close();
     }
 }
 
+// è·å–ä¸»çª—å£å¥æŸ„
 MINIVG_INLINE HWND graph_window()
 {
-    return detail::vgContext<>::instance.handle();
+    return detail::instance().handle();
 }
 
-// »ñµÃ GDI »æÍ¼Éè±¸
+// è·å– GDI ç»˜å›¾è®¾å¤‡
 MINIVG_INLINE HDC graph_hdc()
 {
-    return detail::vgContext<>::instance.hdc;
+    return detail::instance().hdc;
 }
 
+// è®¾ç½®çª—å£æ ‡é¢˜
 MINIVG_INLINE void set_title(const unistring& text)
 {
-    detail::vgContext<>::instance.setTitle(text);
+    detail::instance().setTitle(text);
 }
 
 MINIVG_INLINE void reshape(int width, int height)
@@ -1094,7 +1175,7 @@ MINIVG_INLINE void reshape(int width, int height)
     GetWindowRect(hwnd, &rcWindow);
     GetClientRect(hwnd, &rcClient);
 
-    borderWidth = (rcWindow.right - rcWindow.left) - (rcClient.right - rcClient.left);
+    borderWidth  = (rcWindow.right - rcWindow.left) - (rcClient.right - rcClient.left);
     borderHeight = (rcWindow.bottom - rcWindow.top) - (rcClient.bottom - rcClient.top);
 
     SetWindowPos(hwnd, 0, 0, 0, borderWidth + width, borderHeight + height, SWP_NOMOVE | SWP_NOZORDER);
@@ -1102,32 +1183,33 @@ MINIVG_INLINE void reshape(int width, int height)
 
 MINIVG_INLINE void fullscreen(bool value)
 {
-    if (value != detail::vgContext<>::instance.fullscreen) {
+    if (value != detail::instance().fullscreen) {
         if (value) {
-            GetWindowRect(detail::vgContext<>::instance.handle(), &detail::vgContext<>::instance.winRect);
+            GetWindowRect(detail::instance().handle(), &detail::instance().winRect);
 
-            detail::vgContext<>::instance.setStyle(EZ_FULLSCREEN);
-            detail::vgContext<>::instance.fullscreen = true;
+            detail::instance().setStyle(VG_FULLSCREEN);
+            detail::instance().fullscreen = true;
 
-            // »ñµÃÆÁÄ»´óĞ¡
+            // è·å–å±å¹•å¤§å°
             int cx = GetSystemMetrics(SM_CXSCREEN);
             int cy = GetSystemMetrics(SM_CYSCREEN);
-            SetWindowPos(detail::vgContext<>::instance.handle(), 0, 0, 0, cx, cy, SWP_NOZORDER);
+            SetWindowPos(detail::instance().handle(), 0, 0, 0, cx, cy, SWP_NOZORDER);
         }
         else {
-            detail::vgContext<>::instance.fullscreen = false;
-            detail::vgContext<>::instance.setStyle(EZ_FIXED);
+            detail::instance().fullscreen = false;
+            detail::instance().setStyle(VG_FIXED);
 
-            detail::vgContext<>::instance.setBounds(
-                detail::vgContext<>::instance.winRect.left,
-                detail::vgContext<>::instance.winRect.top,
-                detail::vgContext<>::instance.winRect.right - detail::vgContext<>::instance.winRect.left,
-                detail::vgContext<>::instance.winRect.bottom - detail::vgContext<>::instance.winRect.top);
+            detail::instance().setBounds(
+                detail::instance().winRect.left,
+                detail::instance().winRect.top,
+                detail::instance().winRect.right - detail::instance().winRect.left,
+                detail::instance().winRect.bottom - detail::instance().winRect.top
+            );
         }
     }
 }
 
-// ÏûÏ¢Ñ­»·´¦Àí
+// æ¶ˆæ¯å¾ªç¯å¤„ç†
 MINIVG_INLINE bool do_events()
 {
     MSG msg;
@@ -1135,38 +1217,42 @@ MINIVG_INLINE bool do_events()
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    return detail::vgContext<>::instance.running;
+    return detail::instance().running;
 }
 
-// ³ÌĞòÖ´ĞĞ
+// ç¨‹åºæ‰§è¡Œ
 MINIVG_INLINE int start_app()
 {
-    while (do_events());
+    while (do_events()) {
+        Sleep(1);
+    }
 
     return 0;
 }
 
-// ÏÔÊ¾fps
-MINIVG_INLINE void show_fps()
+// æ˜¾ç¤º fps
+MINIVG_INLINE int show_fps()
 {
-    static DWORD t = GetTickCount();
+    static DWORD t       = GetTickCount();
     static int fps_total = 0;
-    static int fps = 0;
+    static int fps       = 0;
 
     ++fps;
 
     unistring str = L"FPS:";
     str += unistring(fps_total);
 
-    setfont(L"msyh", 16);
-    font_color(255, 0, 0);
-    textout(0, 0, str);
+    setfont(MINIVG_DEFAULT_FONT, 12);
+    font_color(255, 255, 255);
+    textout(view_width() - 80.0f, 0.0f, str);
 
     if (GetTickCount() - t > 1000) {
-        t = GetTickCount();
+        t         = GetTickCount();
         fps_total = fps;
-        fps = 0;
+        fps       = 0;
     }
+
+    return fps_total;
 }
 
 MINIVG_INLINE std::basic_string<TCHAR> ezTempPath()
@@ -1177,50 +1263,48 @@ MINIVG_INLINE std::basic_string<TCHAR> ezTempPath()
 }
 
 //---------------------------------------------------------------------------
-//
-// ´°¿ÚÊÂ¼ş¡¢ÊäÈë°´¼ü¹ÜÀí
-//
+// çª—å£äº‹ä»¶ã€è¾“å…¥æŒ‰é”®ç®¡ç†
 //---------------------------------------------------------------------------
 
-// ÅĞ¶Ï°´¼üÊÇ·ñ°´ÏÂ
+// åˆ¤æ–­æŒ‰é”®æ˜¯å¦æŒ‰ä¸‹
 MINIVG_INLINE bool keystate(int key)
 {
     return GetAsyncKeyState(key) & 0x8000;
 }
 
-// ¼üÅÌÊÂ¼şÓ³Éä
-MINIVG_INLINE void key_push_event(EZ_KEY_EVENT function)
+// é”®ç›˜äº‹ä»¶æ˜ å°„
+MINIVG_INLINE void key_push_event(VG_KEY_EVENT function)
 {
-    detail::vgContext<>::instance.OnKeyDown = function;
+    detail::instance().OnKeyDown = function;
 }
 
-MINIVG_INLINE void key_pop_event(EZ_KEY_EVENT function)
+MINIVG_INLINE void key_pop_event(VG_KEY_EVENT function)
 {
-    detail::vgContext<>::instance.OnKeyUp = function;
+    detail::instance().OnKeyUp = function;
 }
 
-MINIVG_INLINE void input_event(EZ_KEY_EVENT function)
+MINIVG_INLINE void input_event(VG_KEY_EVENT function)
 {
-    detail::vgContext<>::instance.OnKeyPress = function;
+    detail::instance().OnKeyPress = function;
 }
 
-// Êó±êÊÂ¼şÓ³Éä
-MINIVG_INLINE void mouse_push_event(EZ_MOUSE_EVENT function)
+// é¼ æ ‡äº‹ä»¶æ˜ å°„
+MINIVG_INLINE void mouse_push_event(VG_MOUSE_EVENT function)
 {
-    detail::vgContext<>::instance.OnMouseDown = function;
+    detail::instance().OnMouseDown = function;
 }
 
-MINIVG_INLINE void mouse_pop_event(EZ_MOUSE_EVENT function)
+MINIVG_INLINE void mouse_pop_event(VG_MOUSE_EVENT function)
 {
-    detail::vgContext<>::instance.OnMouseUp = function;
+    detail::instance().OnMouseUp = function;
 }
 
-MINIVG_INLINE void mouse_move_event(EZ_MOUSE_EVENT function)
+MINIVG_INLINE void mouse_move_event(VG_MOUSE_EVENT function)
 {
-    detail::vgContext<>::instance.OnMouseMove = function;
+    detail::instance().OnMouseMove = function;
 }
 
-// ¼ÆÊ±Æ÷
+// è®¡æ—¶å™¨
 MINIVG_INLINE void start_timer(UINT interval)
 {
     if (interval) {
@@ -1236,112 +1320,147 @@ MINIVG_INLINE void stop_timer()
     KillTimer(graph_window(), UINT(MINIVG_TIMER_ID));
 }
 
-// ¼ÆÊ±Æ÷ÊÂ¼ş
-MINIVG_INLINE void timer_event(EZ_TIMER_EVENT function)
+// è®¡æ—¶å™¨äº‹ä»¶
+MINIVG_INLINE void timer_event(VG_TIMER_EVENT function)
 {
-    detail::vgContext<>::instance.OnTimer = function;
+    detail::instance().OnTimer = function;
 }
 
-// ´°¿Ú»æÖÆÊÂ¼ş
-MINIVG_INLINE void display_event(EZ_PAINT_EVENT function)
+// çª—å£ç»˜åˆ¶äº‹ä»¶
+MINIVG_INLINE void display_event(VG_PAINT_EVENT function)
 {
-    detail::vgContext<>::instance.OnPaint = function;
+    detail::instance().OnPaint = function;
 }
 
 //---------------------------------------------------------------------------
-//
-// »æÍ¼º¯Êı
-//
+// ç»˜å›¾å‡½æ•°
 //---------------------------------------------------------------------------
 
-// »ñµÃ GDI+ »æÍ¼Éè±¸
+// è·å– GDI+ ç»˜å›¾è®¾å¤‡
 MINIVG_INLINE Gdiplus::Graphics* graphics()
 {
-    return detail::vgContext<>::instance.g;
+    return detail::instance().g;
 }
 
-// ÖØÉè±³¾°»º³åÇø´óĞ¡Î»ÖÃ
+// è®¾ç½®è§†å£æ˜¾ç¤ºèŒƒå›´ (å®½é«˜æ”¹å˜ä¼šé‡è®¾èƒŒæ™¯ç¼“å†²åŒºå¤§å°)
 MINIVG_INLINE void viewport(int x, int y, int width, int height)
 {
-    detail::vgContext<>::instance.viewport(0, 0, width, height);
+    detail::instance().viewport(x, y, width, height);
 }
 
-// ±³¾°»º³å»æÖÆµ½Ä¿±ê HDC
+/* è¿”å›è§†å£å®½åº¦
+ */
+MINIVG_INLINE int view_width()
+{
+    BITMAP bm;
+    GetObject(detail::instance().pixelbuf, sizeof(bm), &bm);
+    return bm.bmWidth;
+}
+
+/* è¿”å›è§†å£å®½åº¦
+ */
+MINIVG_INLINE int view_height()
+{
+    BITMAP bm;
+    GetObject(detail::instance().pixelbuf, sizeof(bm), &bm);
+    return bm.bmHeight;
+}
+
+// èƒŒæ™¯ç¼“å†²ç»˜åˆ¶åˆ°ç›®æ ‡ HDC
 MINIVG_INLINE void framebuf_blt(HDC hdc)
 {
-    detail::vgContext<>::instance.bitblt(hdc);
+    detail::instance().bitblt(hdc);
 }
 
 MINIVG_INLINE void set_graphics_effect_level(Gdiplus::Graphics* g, int level)
 {
     switch (level) {
-    case EZ_SPEED:
-        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);            // »ìºÏÄ£Ê½
-        g->SetCompositingQuality(Gdiplus::CompositingQualityHighSpeed);       // »ìºÏÖÊÁ¿
-        g->SetSmoothingMode(Gdiplus::SmoothingModeHighSpeed);                 // ·´¾â³İ
-        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);                  // ÏñËØÆ«ÒÆÄ£Ê½
-        g->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor);   // Í¼ĞÎËõ·ÅÖÊÁ¿
+    case VG_SPEED:                                                          // é€Ÿåº¦ä¼˜å…ˆ
+        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);          // æ··åˆæ¨¡å¼
+        g->SetCompositingQuality(Gdiplus::CompositingQualityHighSpeed);     // æ··åˆè´¨é‡
+        g->SetSmoothingMode(Gdiplus::SmoothingModeHighSpeed);               // åé”¯é½¿
+        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);                // åƒç´ åç§»æ¨¡å¼
+        g->SetInterpolationMode(Gdiplus::InterpolationModeNearestNeighbor); // å›¾å½¢ç¼©æ”¾è´¨é‡
         break;
-    case EZ_MEDIUM:
-        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);            // »ìºÏÄ£Ê½
-        g->SetCompositingQuality(Gdiplus::CompositingQualityHighSpeed);       // »ìºÏÖÊÁ¿
-        g->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);                 // ·´¾â³İ
-        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);                  // ÏñËØÆ«ÒÆÄ£Ê½
-        g->SetInterpolationMode(Gdiplus::InterpolationModeBilinear);          // Í¼ĞÎËõ·ÅÖÊÁ¿
+    case VG_MEDIUM:                                                         // ä¸­ç­‰è´¨é‡
+        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);          // æ··åˆæ¨¡å¼
+        g->SetCompositingQuality(Gdiplus::CompositingQualityHighSpeed);     // æ··åˆè´¨é‡
+        g->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);               // åé”¯é½¿
+        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeNone);                // åƒç´ åç§»æ¨¡å¼
+        g->SetInterpolationMode(Gdiplus::InterpolationModeBilinear);        // å›¾å½¢ç¼©æ”¾è´¨é‡
         break;
-    case EZ_QUALITY:
-        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);            // »ìºÏÄ£Ê½
-        g->SetCompositingQuality(Gdiplus::CompositingQualityHighQuality);     // »ìºÏÖÊÁ¿
-        g->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);                 // ·´¾â³İ
-        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);           // ÏñËØÆ«ÒÆÄ£Ê½
-        g->SetInterpolationMode(Gdiplus::InterpolationModeBicubic);           // Í¼ĞÎËõ·ÅÖÊÁ¿
+    case VG_QUALITY:                                                        // è´¨é‡ä¼˜å…ˆ
+        g->SetCompositingMode(Gdiplus::CompositingModeSourceOver);          // æ··åˆæ¨¡å¼
+        g->SetCompositingQuality(Gdiplus::CompositingQualityHighQuality);   // æ··åˆè´¨é‡
+        g->SetSmoothingMode(Gdiplus::SmoothingModeAntiAlias);               // åé”¯é½¿
+        g->SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);         // åƒç´ åç§»æ¨¡å¼
+        g->SetInterpolationMode(Gdiplus::InterpolationModeBicubic);         // å›¾å½¢ç¼©æ”¾è´¨é‡
         break;
     default:
         break;
     }
 }
 
-// ÉèÖÃÏÔÊ¾ÖÊÁ¿
+// è®¾ç½®æ˜¾ç¤ºè´¨é‡
 MINIVG_INLINE int effect_level(int level)
 {
-    Gdiplus::Graphics* g = detail::vgContext<>::instance.g;
+    Gdiplus::Graphics* g = detail::instance().g;
     if (!g) {
         return -1;
     }
     set_graphics_effect_level(g, level);
-    detail::vgContext<>::instance.effectLevel = level;
+    detail::instance().effectLevel = level;
 
     return 0;
 }
 
-// ÇåÆÁ
-MINIVG_INLINE void clear(BYTE r, BYTE g, BYTE b, BYTE a)
+/* è®¾ç½®å¸§ç‡
+ */
+MINIVG_INLINE void set_fps(int value)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->Clear(Gdiplus::Color(a, r, g, b));
+    detail::instance().fps           = value;
+    detail::instance().delayRequired = value ? 1.0f / static_cast<float>(value) : -1.0f;
 }
 
-// ¸ü¸Ä»­±ÊÑÕÉ«
+/* è¿”å›å¸§ç‡
+ */
+MINIVG_INLINE int fps()
+{
+    return detail::instance().fps;
+}
+
+// æ¸…å±
+MINIVG_INLINE void clear(BYTE r, BYTE g, BYTE b, BYTE a)
+{
+    if (detail::instance().g)
+        detail::instance().g->Clear(Gdiplus::Color(a, r, g, b));
+}
+
+// æ›´æ”¹ç”»ç¬”é¢œè‰²
 MINIVG_INLINE void pen_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
-    if (detail::vgContext<>::instance.pen)detail::vgContext<>::instance.pen->SetColor(Gdiplus::Color(a, r, g, b));
+    if (detail::instance().pen)
+        detail::instance().pen->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
 MINIVG_INLINE void pen_color(COLORREF argb)
 {
-    if (detail::vgContext<>::instance.pen)detail::vgContext<>::instance.pen->SetColor(Gdiplus::Color(argb));
+    if (detail::instance().pen)
+        detail::instance().pen->SetColor(Gdiplus::Color(argb));
 }
 
 MINIVG_INLINE void pen_color(vec4ub color)
 {
-    if (detail::vgContext<>::instance.pen)detail::vgContext<>::instance.pen->SetColor(Gdiplus::Color(color.a, color.r, color.g, color.b));
+    if (detail::instance().pen)
+        detail::instance().pen->SetColor(Gdiplus::Color(color.a, color.r, color.g, color.b));
 }
 
-// »ñÈ¡»­±ÊÑÕÉ«
+// è·å–ç”»ç¬”é¢œè‰²
 MINIVG_INLINE COLORREF pen_color()
 {
     Gdiplus::Color color;
-    if (detail::vgContext<>::instance.pen) {
-        detail::vgContext<>::instance.pen->GetColor(&color);
+    if (detail::instance().pen) {
+        detail::instance().pen->GetColor(&color);
     }
     return color.GetValue();
 }
@@ -1350,74 +1469,77 @@ MINIVG_INLINE COLORREF pen_color()
 vec4ub pen_color()
 {
     Gdiplus::Color color;
-    if(detail::vgContext<>::instance.pen) {
-        detail::vgContext<>::instance.pen->GetColor(&color);
+    if(detail::instance().pen) {
+        detail::instance().pen->GetColor(&color);
     }
     return vec4ub(color.GetRed(), color.GetGreen(), color.GetBlue(), color.GetAlpha());
 }
 */
 
-// »­±Ê¿í¶È
+// ç”»ç¬”å®½åº¦
 MINIVG_INLINE void pen_width(float width)
 {
-    if (detail::vgContext<>::instance.pen)detail::vgContext<>::instance.pen->SetWidth(width);
+    if (detail::instance().pen)
+        detail::instance().pen->SetWidth(width);
 }
 
-// »ñÈ¡»­±Ê¿í¶È
+// è·å–ç”»ç¬”å®½åº¦
 MINIVG_INLINE float pen_width()
 {
-    return detail::vgContext<>::instance.pen ? detail::vgContext<>::instance.pen->GetWidth() : 1.0f;
+    return detail::instance().pen ? detail::instance().pen->GetWidth() : 1.0f;
 }
 
-// ÉèÖÃ»­±ÊÄ£Ê½
+// è®¾ç½®ç”»ç¬”æ¨¡å¼
 MINIVG_INLINE void pen_style(int mode)
 {
-    if (detail::vgContext<>::instance.pen) {
-        //if(mode != EZ_CUSTOM){//È¡Ïû×Ô¶¨Òåµã»­Ä£Ê½
-        //    ezDashStyle(nullptr, 0);
-        //}
-        detail::vgContext<>::instance.pen->SetDashStyle(Gdiplus::DashStyle(mode));
+    if (detail::instance().pen) {
+        // if(mode != VG_CUSTOM){//å–æ¶ˆè‡ªå®šä¹‰ç‚¹ç”»æ¨¡å¼
+        //     ezDashStyle(nullptr, 0);
+        // }
+        detail::instance().pen->SetDashStyle(Gdiplus::DashStyle(mode));
     }
 }
 
-// ÉèÖÃµã»­Ä£Ê½¼ä¸ô
+// è®¾ç½®ç‚¹ç”»æ¨¡å¼é—´éš”
 MINIVG_INLINE void dash_style(const float* dash, int size)
 {
-    if (detail::vgContext<>::instance.pen) {
-        //if(detail::vgContext<>::instance.pen->GetDashStyle() == Gdiplus::DashStyleCustom){
-        detail::vgContext<>::instance.pen->SetDashPattern(dash, size);
+    if (detail::instance().pen) {
+        // if(detail::instance().pen->GetDashStyle() == Gdiplus::DashStyleCustom){
+        detail::instance().pen->SetDashPattern(dash, size);
         //}
     }
 }
 
-// ¸ü¸ÄÌî³äÑÕÉ«
+// æ›´æ”¹å¡«å……é¢œè‰²
 MINIVG_INLINE void fill_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
-    if (detail::vgContext<>::instance.brush)detail::vgContext<>::instance.brush->SetColor(Gdiplus::Color(a, r, g, b));
+    if (detail::instance().brush)
+        detail::instance().brush->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
 MINIVG_INLINE void fill_color(COLORREF argb)
 {
-    if (detail::vgContext<>::instance.brush)detail::vgContext<>::instance.brush->SetColor(Gdiplus::Color(argb));
+    if (detail::instance().brush)
+        detail::instance().brush->SetColor(Gdiplus::Color(argb));
 }
 
-// »ñÈ¡Ìî³äÑÕÉ«
+// è·å–å¡«å……é¢œè‰²
 MINIVG_INLINE COLORREF fill_color()
 {
     Gdiplus::Color color;
-    if (detail::vgContext<>::instance.brush) {
-        detail::vgContext<>::instance.brush->GetColor(&color);
+    if (detail::instance().brush) {
+        detail::instance().brush->GetColor(&color);
     }
     return color.GetValue();
 }
 
-// »æÖÆÒ»¸öµã
+// ç»˜åˆ¶ä¸€ä¸ªç‚¹
 MINIVG_INLINE void draw_point(float x, float y, float size)
 {
-    if (detail::vgContext<>::instance.g) {
+    if (detail::instance().g) {
         Gdiplus::SolidBrush brush(pen_color());
         float half = size * 0.5f;
-        detail::vgContext<>::instance.g->FillEllipse(&brush, x - half, y - half, size, size);
+        detail::instance().g->FillEllipse(&brush, x - half, y - half, size, size);
     }
 }
 
@@ -1426,37 +1548,42 @@ MINIVG_INLINE void draw_point(float x, float y)
     draw_point(x, y, pen_width());
 }
 
-// »æÖÆÏß¶Î
+// ç»˜åˆ¶çº¿æ®µ
 MINIVG_INLINE void draw_line(float x1, float y1, float x2, float y2)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->DrawLine(detail::vgContext<>::instance.pen, x1, y1, x2, y2);
+    if (detail::instance().g)
+        detail::instance().g->DrawLine(detail::instance().pen, x1, y1, x2, y2);
 }
 
-// »æÖÆÒ»¸ö¿ÕĞÄ¾ØĞÎ
+// ç»˜åˆ¶ä¸€ä¸ªç©ºå¿ƒçŸ©å½¢
 MINIVG_INLINE void draw_rect(float x, float y, float width, float height)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->DrawRectangle(detail::vgContext<>::instance.pen, x, y, width, height);
+    if (detail::instance().g)
+        detail::instance().g->DrawRectangle(detail::instance().pen, x, y, width, height);
 }
 
-// Ìî³äÒ»¸ö¾ØĞÎ
+// å¡«å……ä¸€ä¸ªçŸ©å½¢
 MINIVG_INLINE void fill_rect(float x, float y, float width, float height)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->FillRectangle(detail::vgContext<>::instance.brush, x, y, width, height);
+    if (detail::instance().g)
+        detail::instance().g->FillRectangle(detail::instance().brush, x, y, width, height);
 }
 
-// »æÖÆÔ²½Ç¾ØĞÎ
+// ç»˜åˆ¶åœ†è§’çŸ©å½¢
 MINIVG_INLINE void draw_roundrect(float x, float y, float width, float height, float cx, float cy)
 {
     cx *= 2.0f;
     cy *= 2.0f;
 
-    if (cx > width)cx = width;
-    if (cy > height)cy = height;
+    if (cx > width)
+        cx = width;
+    if (cy > height)
+        cy = height;
 
     float x2 = x + width - cx;
     float y2 = y + height - cy;
 
-    Gdiplus::Graphics *g = detail::vgContext<>::instance.g;
+    Gdiplus::Graphics* g = detail::instance().g;
     if (g) {
         Gdiplus::GraphicsPath path;
         path.AddArc(x, y, cx, cy, 180, 90);
@@ -1464,23 +1591,25 @@ MINIVG_INLINE void draw_roundrect(float x, float y, float width, float height, f
         path.AddArc(x2, y2, cx, cy, 0, 90);
         path.AddArc(x, y2, cx, cy, 90, 90);
         path.CloseFigure();
-        g->DrawPath(detail::vgContext<>::instance.pen, &path);
+        g->DrawPath(detail::instance().pen, &path);
     }
 }
 
-// Ìî³äÔ²½Ç¾ØĞÎ
+// å¡«å……åœ†è§’çŸ©å½¢
 MINIVG_INLINE void fill_roundrect(float x, float y, float width, float height, float cx, float cy)
 {
     cx *= 2.0f;
     cy *= 2.0f;
 
-    if (cx > width)cx = width;
-    if (cy > height)cy = height;
+    if (cx > width)
+        cx = width;
+    if (cy > height)
+        cy = height;
 
     float x2 = x + width - cx;
     float y2 = y + height - cy;
 
-    Gdiplus::Graphics *g = detail::vgContext<>::instance.g;
+    Gdiplus::Graphics* g = detail::instance().g;
     if (g) {
         Gdiplus::GraphicsPath path;
         path.AddArc(x, y, cx, cy, 180, 90);
@@ -1488,123 +1617,134 @@ MINIVG_INLINE void fill_roundrect(float x, float y, float width, float height, f
         path.AddArc(x2, y2, cx, cy, 0, 90);
         path.AddArc(x, y2, cx, cy, 90, 90);
         path.CloseFigure();
-        g->FillPath(detail::vgContext<>::instance.brush, &path);
+        g->FillPath(detail::instance().brush, &path);
     }
 }
 
-// »æÖÆÍÖÔ²£¬xy ÎªÔ²ĞÄ
-MINIVG_INLINE void draw_ellipse(float x, float y, float cx, float cy)
+// ç»˜åˆ¶æ¤­åœ†ï¼Œxy ä¸ºåœ†å¿ƒ
+MINIVG_INLINE void draw_ellipse(float x, float y, float rx, float ry)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->DrawEllipse(detail::vgContext<>::instance.pen, x - cx * 0.5f, y - cy * 0.5f, cx, cy);
+    if (detail::instance().g)
+        detail::instance().g->DrawEllipse(detail::instance().pen, x - rx, y - ry, rx * 2.0f, ry * 2.0f);
 }
 
-// Ìî³äÍÖÔ²
-MINIVG_INLINE void fill_ellipse(float x, float y, float cx, float cy)
+// å¡«å……æ¤­åœ†
+MINIVG_INLINE void fill_ellipse(float x, float y, float rx, float ry)
 {
-    if (detail::vgContext<>::instance.g)detail::vgContext<>::instance.g->FillEllipse(detail::vgContext<>::instance.brush, x - cx * 0.5f, y - cy * 0.5f, cx, cy);
+    if (detail::instance().g)
+        detail::instance().g->FillEllipse(detail::instance().brush, x - rx, y - ry, rx * 2.0f, ry * 2.0f);
 }
 
-// »æÖÆ¿ÕĞÄÔ²£¬xy ÎªÔ²ĞÄ
+// ç»˜åˆ¶ç©ºå¿ƒåœ†ï¼Œxy ä¸ºåœ†å¿ƒ
 MINIVG_INLINE void draw_circle(float x, float y, float r)
 {
     return draw_ellipse(x, y, r, r);
 }
 
-// Ìî³äÔ²
+// å¡«å……åœ†
 MINIVG_INLINE void fill_circle(float x, float y, float r)
 {
     return fill_ellipse(x, y, r, r);
 }
 
-// »æÖÆÁ¬ĞøµÄÏß¶Î
+// ç»˜åˆ¶è¿ç»­çš„çº¿æ®µ
 MINIVG_INLINE void draw_polyline(const vec2f* points, size_t size)
 {
-    if (detail::vgContext<>::instance.g) {
-        detail::vgContext<>::instance.g->DrawLines(detail::vgContext<>::instance.pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size));
+    if (detail::instance().g) {
+        detail::instance().g->DrawLines(
+            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+        );
     }
 }
 
-// »æÖÆ¶à±ßĞÎ
+// ç»˜åˆ¶å¤šè¾¹å½¢
 MINIVG_INLINE void draw_polygon(const vec2f* points, size_t size)
 {
-    if (detail::vgContext<>::instance.g) {
-        detail::vgContext<>::instance.g->DrawPolygon(detail::vgContext<>::instance.pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size));
+    if (detail::instance().g) {
+        detail::instance().g->DrawPolygon(
+            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+        );
     }
 }
 
-// Ìî³ä¶à±ßĞÎ
+// å¡«å……å¤šè¾¹å½¢
 MINIVG_INLINE void fill_polygon(const vec2f* points, size_t size)
 {
-    if (detail::vgContext<>::instance.g) {
-        detail::vgContext<>::instance.g->FillPolygon(detail::vgContext<>::instance.brush, reinterpret_cast<const Gdiplus::PointF*>(points), int(size));
+    if (detail::instance().g) {
+        detail::instance().g->FillPolygon(
+            detail::instance().brush, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+        );
     }
 }
 
 //---------------------------------------------------------------------------
-//
-// ×ÖÌåº¯Êı
-//
+// å­—ä½“å‡½æ•°
 //---------------------------------------------------------------------------
 
-// ÉèÖÃ×ÖÌå¡£×ÖÌåÃû×Ö¡¢´óĞ¡¡¢·ç¸ñ
-MINIVG_INLINE void setfont(const unistring& name, float size, EZGDI_FONTSTYLE style)
+// è®¾ç½®å­—ä½“ã€‚å­—ä½“åå­—ã€å¤§å°ã€é£æ ¼
+MINIVG_INLINE void setfont(const unistring& name, float size, vgFontStyle style)
 {
-    if (detail::vgContext<>::instance.font) {
-        delete detail::vgContext<>::instance.font;
-        detail::vgContext<>::instance.font = new Gdiplus::Font(name.c_str(), size, style, Gdiplus::UnitPoint, nullptr);
+    if (detail::instance().font) {
+        delete detail::instance().font;
+        detail::instance().font = new Gdiplus::Font(name.c_str(), size, style, Gdiplus::UnitPoint, nullptr);
     }
 }
 
 MINIVG_INLINE void setfont(const unistring& name, float size, bool bold, bool, bool underline, bool strikeout)
 {
-    EZGDI_FONTSTYLE style = EZ_NORMAL;
+    vgFontStyle style = VG_NORMAL;
     if (bold) {
-        style = (EZGDI_FONTSTYLE) (style | EZ_BOLD);
+        style = (vgFontStyle) (style | VG_BOLD);
     }
     if (underline) {
-        style = (EZGDI_FONTSTYLE) (style | EZ_UNDERLINE);
+        style = (vgFontStyle) (style | VG_UNDERLINE);
     }
     if (strikeout) {
-        style = (EZGDI_FONTSTYLE) (style | EZ_STRIKEOUT);
+        style = (vgFontStyle) (style | VG_STRIKEOUT);
     }
     setfont(name, size, style);
 }
 
 MINIVG_INLINE void font_name(const unistring& name)
 {
-    detail::vgContext<>::instance.fontName = name;
-    detail::vgContext<>::instance.fontIsChange = true;
+    detail::instance().fontName     = name;
+    detail::instance().fontIsChange = true;
 }
 
 MINIVG_INLINE void font_size(float size)
 {
-    detail::vgContext<>::instance.fontSize = size;
-    detail::vgContext<>::instance.fontIsChange = true;
+    detail::instance().fontSize     = size;
+    detail::instance().fontIsChange = true;
 }
 
 MINIVG_INLINE void font_style(int style)
 {
-    detail::vgContext<>::instance.fontStyle = style;
-    detail::vgContext<>::instance.fontIsChange = true;
+    detail::instance().fontStyle    = style;
+    detail::instance().fontIsChange = true;
 }
 
-// »ñÈ¡×ÖÌåÊôĞÔ
-//unistring font_name();
-//int font_size();
-//int font_style();
+// todo... è·å–å­—ä½“å±æ€§
+// unistring font_name();
+// int font_size();
+// int font_style();
 
-// ×ÖÌåÑÕÉ«
+// å­—ä½“é¢œè‰²
 MINIVG_INLINE void font_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
-    if (detail::vgContext<>::instance.font_color)detail::vgContext<>::instance.font_color->SetColor(Gdiplus::Color(a, r, g, b));
+    if (detail::instance().font_color)
+        detail::instance().font_color->SetColor(Gdiplus::Color(a, r, g, b));
 }
 
 MINIVG_INLINE void font_color(COLORREF color)
 {
-    if (detail::vgContext<>::instance.font_color)detail::vgContext<>::instance.font_color->SetColor(Gdiplus::Color(color));
+    if (detail::instance().font_color) {
+        Gdiplus::Color argb;
+        argb.SetFromCOLORREF(color);
+        detail::instance().font_color->SetColor(argb);
+    }
 }
 
-// Êä³öÎÄ×Ö
+// è¾“å‡ºæ–‡å­—
 MINIVG_INLINE void textout(float x, float y, const char* text, size_t length)
 {
     textout(x, y, unistring(text, length));
@@ -1612,15 +1752,20 @@ MINIVG_INLINE void textout(float x, float y, const char* text, size_t length)
 
 MINIVG_INLINE void textout(float x, float y, const wchar_t* text, size_t length)
 {
-    if (detail::vgContext<>::instance.g) {
-        if (detail::vgContext<>::instance.fontIsChange) {
-            setfont(detail::vgContext<>::instance.fontName, detail::vgContext<>::instance.fontSize, EZGDI_FONTSTYLE(detail::vgContext<>::instance.fontStyle));
-            detail::vgContext<>::instance.fontIsChange = false;
+    detail::vgContext& vg = detail::instance();
+    if (vg.g) {
+        if (vg.fontIsChange) {
+            setfont(vg.fontName, vg.fontSize, vgFontStyle(vg.fontStyle));
+            vg.fontIsChange = false;
         }
 
         Gdiplus::StringFormat format;
-        detail::vgContext<>::instance.g->DrawString(text, INT(length), detail::vgContext<>::instance.font,
-            Gdiplus::PointF(x, y), &format, detail::vgContext<>::instance.font_color);
+        vg.g->DrawString(
+            text, INT(length), vg.font, Gdiplus::PointF(x, y), &format, vg.font_color
+        );
+    }
+    else {
+        printf("error: context is null.\n");
     }
 }
 
@@ -1629,57 +1774,54 @@ MINIVG_INLINE void textout(float x, float y, const unistring& text)
     return textout(x, y, text.c_str(), text.length());
 }
 
-// ¸ñÊ½Êä³öÎÄ×Ö£¨×ó¶ÔÆë¡¢ÓÒ¶ÔÆë¡¢¾ÓÖĞ£©
+// æ ¼å¼è¾“å‡ºæ–‡å­—ï¼ˆå·¦å¯¹é½ã€å³å¯¹é½ã€å±…ä¸­ï¼‰
 MINIVG_INLINE void drawtext(float x, float y, float width, float height, const unistring& text, int align)
 {
-    if (detail::vgContext<>::instance.g) {
-        if (detail::vgContext<>::instance.fontIsChange) {
-            setfont(detail::vgContext<>::instance.fontName, detail::vgContext<>::instance.fontSize, EZGDI_FONTSTYLE(detail::vgContext<>::instance.fontStyle));
-            detail::vgContext<>::instance.fontIsChange = false;
+    if (detail::instance().g) {
+        if (detail::instance().fontIsChange) {
+            setfont(detail::instance().fontName, detail::instance().fontSize, vgFontStyle(detail::instance().fontStyle));
+            detail::instance().fontIsChange = false;
         }
 
         Gdiplus::StringFormat format;
 
         int hAlign = 0;
         int vAlign = 0;
-        if ((align & EZ_CENTER_H) == EZ_CENTER_H) {
+        if ((align & VG_CENTER_H) == VG_CENTER_H) {
             hAlign = Gdiplus::StringAlignmentCenter;
         }
-        else if (align & EZ_RIGHT) {
+        else if (align & VG_RIGHT) {
             hAlign = Gdiplus::StringAlignmentFar;
         }
 
-        if ((align & EZ_CENTER_V) == EZ_CENTER_V) {
+        if ((align & VG_CENTER_V) == VG_CENTER_V) {
             vAlign = Gdiplus::StringAlignmentCenter;
         }
-        else if (align & EZ_DOWN) {
+        else if (align & VG_DOWN) {
             vAlign = Gdiplus::StringAlignmentFar;
         }
 
-        format.SetAlignment((Gdiplus::StringAlignment)hAlign);//Ë®Æ½¶ÔÆë
-        format.SetLineAlignment((Gdiplus::StringAlignment)vAlign);//´¹Ö±¶ÔÆë
+        format.SetAlignment((Gdiplus::StringAlignment) hAlign);     // æ°´å¹³å¯¹é½
+        format.SetLineAlignment((Gdiplus::StringAlignment) vAlign); // å‚ç›´å¯¹é½
         Gdiplus::RectF rect(x, y, width, height);
-        detail::vgContext<>::instance.g->DrawString(text.c_str(), INT(text.length()),
-            detail::vgContext<>::instance.font,
-            rect,
-            &format,
-            detail::vgContext<>::instance.font_color);
-
+        detail::instance().g->DrawString(
+            text.c_str(), INT(text.length()), detail::instance().font, rect, &format, detail::instance().font_color
+        );
     }
 }
 
-// ×ÖÌå¸ñÊ½»¯Êä³ö£¬ºÍ printf Ê¹ÓÃÀàËÆ
+// å­—ä½“æ ¼å¼åŒ–è¾“å‡ºï¼Œå’Œ printf ä½¿ç”¨ç±»ä¼¼
 MINIVG_INLINE void print(float x, float y, const char* param, ...)
 {
     const size_t size = 1024;
     va_list body;
     char buf[size] = { 0 };
     va_start(body, param);
-    #ifdef _MSC_VER
+#ifdef _MSC_VER
     _vsnprintf_s(buf, size, size - 1, param, body);
-    #else
+#else
     vsnprintf(buf, 1024, param, body);
-    #endif
+#endif
     textout(x, y, buf, strlen(buf));
     va_end(body);
 }
@@ -1690,77 +1832,94 @@ MINIVG_INLINE void print(float x, float y, const wchar_t* param, ...)
     va_list body;
     wchar_t buf[size] = { 0 };
     va_start(body, param);
-    #ifdef _MSC_VER
+#ifdef _MSC_VER
     _vsnwprintf_s(buf, size, size - 1, param, body);
-    #else
+#else
     vsnwprintf(buf, 1024, param, body);
-    #endif
+#endif
     textout(x, y, buf, wcslen(buf));
     va_end(body);
 }
 
-// »ñµÃ×Ö·û´®µÄÏñËØ¿í¶È
+// è·å–å­—ç¬¦ä¸²çš„åƒç´ å®½åº¦
 MINIVG_INLINE float textwidth(const unistring& text)
 {
-    if (detail::vgContext<>::instance.g) {
+    if (detail::instance().g) {
         Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
         Gdiplus::SizeF size;
-        detail::vgContext<>::instance.g->MeasureString(text.c_str(), int(text.length()), detail::vgContext<>::instance.font, layoutSize, nullptr, &size);
+        detail::instance().g->MeasureString(
+            text.c_str(), int(text.length()), detail::instance().font, layoutSize, nullptr, &size
+        );
         return size.Width;
     }
     return 0;
 }
 
-// »ñµÃ×Ö·û´®µÄÏñËØ¸ß¶È
+// è·å–å­—ç¬¦ä¸²çš„åƒç´ é«˜åº¦
 MINIVG_INLINE float textheight(const unistring& text)
 {
-    if (detail::vgContext<>::instance.g) {
+    if (detail::instance().g) {
         Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
         Gdiplus::SizeF size;
-        detail::vgContext<>::instance.g->MeasureString(text.c_str(), int(text.length()), detail::vgContext<>::instance.font, layoutSize, nullptr, &size);
+        detail::instance().g->MeasureString(
+            text.c_str(), int(text.length()), detail::instance().font, layoutSize, nullptr, &size
+        );
         return size.Height;
     }
     return 0;
 }
 
 //---------------------------------------------------------------------------
-//
-// Í¼Æ¬²Ù×÷
-//
+// å›¾ç‰‡æ“ä½œ
 //---------------------------------------------------------------------------
 
-inline ezImage::ezImage() : m_handle(), m_data()
+inline vgImage::vgImage() :
+    m_handle(), m_data()
 {
 }
 
-inline ezImage::~ezImage()
+inline vgImage::~vgImage()
 {
     this->close();
 }
 
-// ·µ»ØÍ¼Æ¬µÄ gdiplus Í¼Æ¬Ö¸Õë
-inline Gdiplus::Bitmap* ezImage::handle()const
+// è¿”å›å›¾ç‰‡çš„æŒ‡é’ˆ
+inline Gdiplus::Bitmap* vgImage::handle() const
 {
     return m_handle;
 }
 
-// ´´½¨Ò»¸öÍ¼Æ¬£¬Ä¬ÈÏÎª 32 Î»É«
-inline int ezImage::create(int width, int height, int format)
+// åˆ›å»ºä¸€ä¸ªå›¾ç‰‡ï¼Œé»˜è®¤ä¸º 32 ä½è‰²
+inline int vgImage::create(int width, int height, int format)
 {
     this->close();
-    m_handle = new Gdiplus::Bitmap(width, height, format);
+
+    DWORD gdiFormat;
+    switch (format) {
+    case VG_RGB:
+        gdiFormat = PixelFormat32bppRGB;
+        break;
+    case VG_RGBA:
+        gdiFormat = PixelFormat32bppPARGB;
+        break;
+    default:
+        gdiFormat = PixelFormat32bppPARGB;
+        break;
+    }
+
+    m_handle = new Gdiplus::Bitmap(width, height, gdiFormat);
     return 0;
 }
 
-// ´ò¿ªÒ»¸öÍ¼Æ¬£¬Ö§³Ö bmp¡¢jpg¡¢png¡¢¾²Ì¬ gif µÈ³£¼û¸ñÊ½
-inline int ezImage::open(const unistring& filename)
+// æ‰“å¼€ä¸€ä¸ªå›¾ç‰‡ï¼Œæ”¯æŒ bmpã€jpgã€pngã€é™æ€ gif ç­‰å¸¸è§æ ¼å¼
+inline int vgImage::open(const unistring& filename)
 {
     this->close();
     Gdiplus::Bitmap* bmp = Gdiplus::Bitmap::FromFile(filename.c_str());
     if (bmp->GetLastStatus() == Gdiplus::Ok) {
         m_handle = bmp->Clone(0, 0, bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppPARGB);
 
-        // µ÷ÕûÍ¼Æ¬ DPI
+        // è°ƒæ•´å›¾ç‰‡ DPI
         m_handle->SetResolution(96.0f, 96.0f);
 
         return 0;
@@ -1771,11 +1930,11 @@ inline int ezImage::open(const unistring& filename)
     return -1;
 }
 
-// ´Ó×ÊÔ´ÖĞ¼ÓÔØÍ¼Æ¬
+// ä»èµ„æºä¸­åŠ è½½å›¾ç‰‡
 inline Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
 {
     Gdiplus::Bitmap* image = nullptr;
-    HINSTANCE hInstance = GetModuleHandle(nullptr);
+    HINSTANCE hInstance    = GetModuleHandle(nullptr);
 
     if (type == RT_BITMAP) {
         return Gdiplus::Bitmap::FromResource(GetModuleHandle(nullptr), MAKEINTRESOURCEW(id));
@@ -1784,7 +1943,7 @@ inline Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
     HRSRC hResSource = ::FindResource(hInstance, MAKEINTRESOURCE(id), type);
     if (hResSource) {
         // load resource into memory
-        DWORD size = SizeofResource(hInstance, hResSource);
+        DWORD size   = SizeofResource(hInstance, hResSource);
         BYTE* source = (BYTE*) LoadResource(hInstance, hResSource);
         if (source) {
             // allocate global memory on which to create stream
@@ -1811,8 +1970,8 @@ inline Gdiplus::Bitmap* LoadResourceImage(UINT id, PCTSTR type)
     return image;
 }
 
-// ´ò¿ª×ÊÔ´ÖĞµÄÍ¼Æ¬
-inline int ezImage::open(int id, PCTSTR resource_type)
+// æ‰“å¼€èµ„æºä¸­çš„å›¾ç‰‡
+inline int vgImage::open(int id, PCTSTR resource_type)
 {
     this->close();
     Gdiplus::Bitmap* bmp = LoadResourceImage(id, resource_type);
@@ -1820,7 +1979,7 @@ inline int ezImage::open(int id, PCTSTR resource_type)
         m_handle = bmp->Clone(0, 0, bmp->GetWidth(), bmp->GetHeight(), PixelFormat32bppPARGB);
         delete bmp;
 
-        // µ÷ÕûÍ¼Æ¬ DPI
+        // è°ƒæ•´å›¾ç‰‡ DPI
         m_handle->SetResolution(96.0f, 96.0f);
 
         return 0;
@@ -1828,44 +1987,44 @@ inline int ezImage::open(int id, PCTSTR resource_type)
     return -1;
 }
 
-// Ó³ÉäÒ»¸ö HBITMAP ¶ÔÏó
-inline int ezImage::bind(HBITMAP hbmp)
+// æ˜ å°„ä¸€ä¸ª HBITMAP å¯¹è±¡
+inline int vgImage::bind(HBITMAP hbmp)
 {
     this->close();
     BITMAP bm;
     GetObject(hbmp, sizeof(bm), &bm);
     if (bm.bmBits) {
         BYTE* pixels = ((BYTE*) bm.bmBits) + (bm.bmHeight - 1) * bm.bmWidthBytes;
-        m_handle = new Gdiplus::Bitmap(bm.bmWidth, bm.bmHeight, -bm.bmWidthBytes, PixelFormat32bppARGB, pixels);
+        m_handle     = new Gdiplus::Bitmap(bm.bmWidth, bm.bmHeight, -bm.bmWidthBytes, PixelFormat32bppARGB, pixels);
     }
     return 0;
 }
 
-// ÅĞ¶ÏÍ¼Æ¬ÊÇ·ñÎª¿Õ
-inline bool ezImage::empty()const
+// åˆ¤æ–­å›¾ç‰‡æ˜¯å¦ä¸ºç©º
+inline bool vgImage::empty() const
 {
     return !m_handle;
 }
 
 inline const wchar_t* GetImageType(int type)
 {
-    // Í¼Æ¬¸ñÊ½
-    const wchar_t* GDIPLUS_IMAGE_BMP = L"image/bmp";
-    const wchar_t* GDIPLUS_IMAGE_JPG = L"image/jpeg";
-    const wchar_t* GDIPLUS_IMAGE_GIF = L"image/gif";
+    // å›¾ç‰‡æ ¼å¼
+    const wchar_t* GDIPLUS_IMAGE_BMP  = L"image/bmp";
+    const wchar_t* GDIPLUS_IMAGE_JPG  = L"image/jpeg";
+    const wchar_t* GDIPLUS_IMAGE_GIF  = L"image/gif";
     const wchar_t* GDIPLUS_IMAGE_TIFF = L"image/tiff";
-    const wchar_t* GDIPLUS_IMAGE_PNG = L"image/png";
+    const wchar_t* GDIPLUS_IMAGE_PNG  = L"image/png";
 
     switch (type) {
-    case EZ_BMP:
+    case VG_BMP:
         return GDIPLUS_IMAGE_BMP;
-    case EZ_JPG:
+    case VG_JPG:
         return GDIPLUS_IMAGE_JPG;
-    case EZ_GIF:
+    case VG_GIF:
         return GDIPLUS_IMAGE_GIF;
-    case EZ_TIFF:
+    case VG_TIFF:
         return GDIPLUS_IMAGE_TIFF;
-    case EZ_PNG:
+    case VG_PNG:
         return GDIPLUS_IMAGE_PNG;
     default:
         return nullptr;
@@ -1874,36 +2033,36 @@ inline const wchar_t* GetImageType(int type)
 
 MINIVG_INLINE int GetImageCLSID(const WCHAR* format, CLSID* pCLSID)
 {
-    // µÃµ½¸ñÊ½ÎªformatµÄÍ¼ÏñÎÄ¼şµÄ±àÂëÖµ£¬·ÃÎÊ¸Ã¸ñÊ½Í¼ÏñµÄCOM×é¼şµÄGUIDÖµ±£´æÔÚpCLSIDÖĞ
-    UINT num = 0;
+    // å¾—åˆ°æ ¼å¼ä¸º format çš„å›¾åƒæ–‡ä»¶çš„ç¼–ç å€¼ï¼Œè®¿é—®è¯¥æ ¼å¼å›¾åƒçš„ COM ç»„ä»¶çš„ GUID å€¼ä¿å­˜åœ¨ pCLSID ä¸­
+    UINT num  = 0;
     UINT size = 0;
 
     Gdiplus::ImageCodecInfo* pImageCodecInfo = nullptr;
     Gdiplus::GetImageEncodersSize(&num, &size);
 
     if (size == 0) {
-        // ±àÂëĞÅÏ¢²»¿ÉÓÃ
+        // ç¼–ç ä¿¡æ¯ä¸å¯ç”¨
         return -1;
     }
 
-    // ·ÖÅäÄÚ´æ
-    pImageCodecInfo = (Gdiplus::ImageCodecInfo*)(malloc(size));
+    // åˆ†é…å†…å­˜
+    pImageCodecInfo = (Gdiplus::ImageCodecInfo*) (malloc(size));
     if (!pImageCodecInfo) {
-        // ·ÖÅäÊ§°Ü
+        // åˆ†é…å¤±è´¥
         return -2;
     }
 
-    // »ñµÃÏµÍ³ÖĞ¿ÉÓÃµÄ±àÂë·½Ê½µÄËùÓĞĞÅÏ¢
+    // è·å–ç³»ç»Ÿä¸­å¯ç”¨çš„ç¼–ç æ–¹å¼çš„æ‰€æœ‰ä¿¡æ¯
     GetImageEncoders(num, size, pImageCodecInfo);
 
-    // ÔÚ¿ÉÓÃ±àÂëĞÅÏ¢ÖĞ²éÕÒformat¸ñÊ½ÊÇ·ñ±»Ö§³Ö
+    // åœ¨å¯ç”¨ç¼–ç ä¿¡æ¯ä¸­æŸ¥æ‰¾formatæ ¼å¼æ˜¯å¦è¢«æ”¯æŒ
     for (UINT i = 0; i < num; ++i) {
-        // MimeType£º±àÂë·½Ê½µÄ¾ßÌåÃèÊö
+        // MimeTypeï¼šç¼–ç æ–¹å¼çš„å…·ä½“æè¿°
         if (wcscmp(pImageCodecInfo[i].MimeType, format) == 0) {
             *pCLSID = pImageCodecInfo[i].Clsid;
             free(pImageCodecInfo);
 
-            // ³É¹¦
+            // æˆåŠŸ
             return 0;
         }
     }
@@ -1912,7 +2071,7 @@ MINIVG_INLINE int GetImageCLSID(const WCHAR* format, CLSID* pCLSID)
     return -3;
 }
 
-inline int ezImage::save(const unistring& filename, int type)
+inline int vgImage::save(const unistring& filename, int type)
 {
     if (m_handle) {
         CLSID id;
@@ -1924,8 +2083,8 @@ inline int ezImage::save(const unistring& filename, int type)
     return -1;
 }
 
-// ÊÍ·ÅÍ¼Æ¬
-inline void ezImage::close()
+// é‡Šæ”¾å›¾ç‰‡
+inline void vgImage::close()
 {
     if (m_handle) {
         delete m_handle;
@@ -1933,23 +2092,23 @@ inline void ezImage::close()
     }
 }
 
-// ·µ»ØÍ¼Æ¬µÄ¿í¶È
-inline int ezImage::width()const
+// è¿”å›å›¾ç‰‡çš„å®½åº¦
+inline int vgImage::width() const
 {
     return m_handle ? m_handle->GetWidth() : 0;
 }
 
-// ·µ»ØÍ¼Æ¬µÄ¸ß¶È
-inline int ezImage::height()const
+// è¿”å›å›¾ç‰‡çš„é«˜åº¦
+inline int vgImage::height() const
 {
     return m_handle ? m_handle->GetHeight() : 0;
 }
 
-// »ñÈ¡Í¼ÏñÊı¾İÖ¸Õë
-inline void* ezImage::map(bool readonly, int pixelformat)
+// è·å–å›¾åƒæ•°æ®æŒ‡é’ˆ
+inline void* vgImage::map(bool readonly, int pixelformat)
 {
     if (m_data) {
-        msgbox(L"Í¼Æ¬ÒÑ¾­Ëø¶¨¡£", L"´íÎó");
+        msgbox(L"å›¾ç‰‡å·²ç»é”å®šã€‚", L"é”™è¯¯");
     }
     else {
         m_data = new Gdiplus::BitmapData();
@@ -1963,11 +2122,11 @@ inline void* ezImage::map(bool readonly, int pixelformat)
             flags = Gdiplus::ImageLockModeRead | Gdiplus::ImageLockModeWrite;
         }
 
-        if (pixelformat == EZ_RGB) {
+        if (pixelformat == VG_RGB) {
             stat = m_handle->LockBits(0, flags, PixelFormat24bppRGB, m_data);
         }
         else {
-            // 2022-02-06 05:11:28 ĞŞ¸Ä¸ñÊ½Îª PixelFormat32bppPARGB
+            // 2022-02-06 05:11:28 ä¿®æ”¹æ ¼å¼ä¸º PixelFormat32bppPARGB
             stat = m_handle->LockBits(0, flags, PixelFormat32bppPARGB, m_data);
         }
 
@@ -1979,8 +2138,8 @@ inline void* ezImage::map(bool readonly, int pixelformat)
     return nullptr;
 }
 
-// »¹Ô­Í¼ÏñÊı¾İ
-inline void ezImage::unmap()
+// è¿˜åŸå›¾åƒæ•°æ®
+inline void vgImage::unmap()
 {
     if (m_data) {
         m_handle->UnlockBits(m_data);
@@ -1989,32 +2148,32 @@ inline void ezImage::unmap()
 }
 
 //
-// API ²¿·Ö
+// API éƒ¨åˆ†
 //
 
-// ´´½¨Í¼Æ¬
-MINIVG_INLINE ezImage* newimage(int width, int height)
+// åˆ›å»ºå›¾ç‰‡
+MINIVG_INLINE vgImage* newimage(int width, int height)
 {
-    return detail::vgContext<>::instance.resource.allocate(width, height);
+    return detail::instance().resource.allocate(width, height);
 }
 
-// É¾³ıÍ¼Æ¬
-MINIVG_INLINE void freeimage(ezImage* image)
+// åˆ é™¤å›¾ç‰‡
+MINIVG_INLINE void freeimage(vgImage* image)
 {
-    detail::vgContext<>::instance.resource.free(image);
+    detail::instance().resource.free(image);
 }
 
-MINIVG_INLINE ezImage* loadimage(const unistring& filename)
+MINIVG_INLINE vgImage* loadimage(const unistring& filename)
 {
-    return detail::vgContext<>::instance.resource.loadimage(filename);
+    return detail::instance().resource.loadimage(filename);
 }
 
-MINIVG_INLINE ezImage* loadimage(int id, PCTSTR resource_type)
+MINIVG_INLINE vgImage* loadimage(int id, PCTSTR resource_type)
 {
-    return detail::vgContext<>::instance.resource.loadimage(id, resource_type);
+    return detail::instance().resource.loadimage(id, resource_type);
 }
 
-MINIVG_INLINE int saveimage(ezImage* image, const unistring& filename)
+MINIVG_INLINE int saveimage(vgImage* image, const unistring& filename)
 {
     if (image) {
         image->save(filename);
@@ -2022,43 +2181,114 @@ MINIVG_INLINE int saveimage(ezImage* image, const unistring& filename)
     return -1;
 }
 
-MINIVG_INLINE void drawimage(ezImage* image, float x, float y)
+MINIVG_INLINE void drawimage(vgImage* image, float x, float y)
 {
-    if (detail::vgContext<>::instance.g && image && image->handle())detail::vgContext<>::instance.g->DrawImage(image->handle(), x, y);
-}
-
-MINIVG_INLINE void drawimage(ezImage* image, float x, float y, float width, float height)
-{
-    if (detail::vgContext<>::instance.g && image && image->handle())detail::vgContext<>::instance.g->DrawImage(image->handle(), x, y, width, height);
-}
-
-// ÔÚxyÎ»ÖÃ»æÖÆÍ¼Æ¬£¬²¢Ğı×ªÒ»¸ö½Ç¶È
-MINIVG_INLINE void rotate_image(ezImage* image, float x, float y, float rotate)
-{
-    return rotate_image(image, x, y, float(image->width()), float(image->height()), rotate);
-}
-
-// ÔÚxyÎ»ÖÃ»æÖÆÍ¼Æ¬£¬Ëõ·Å£¬²¢Ğı×ªÒ»¸ö½Ç¶È
-MINIVG_INLINE void rotate_image(ezImage* image, float x, float y, float width, float height, float rotate)
-{
-    Gdiplus::Graphics* g = detail::vgContext<>::instance.g;
-    if (g && image) {
-        float cx = width / 2;
-        float cy = height / 2;
-        Gdiplus::Matrix m;
-        g->GetTransform(&m);
-        g->TranslateTransform(x, y);        // ÒÆ¶¯ xy µ½Ô­µã
-        g->RotateTransform(rotate);         // Ğı×ª
-        g->TranslateTransform(-cx, -cy);    // ÒÆ¶¯»ØÔ­Î»ÖÃ
-        g->DrawImage(image->handle(), 0.0f, 0.0f, width, height);   // »æÖÆÍ¼Ïñ
-        g->SetTransform(&m);
+    if (detail::instance().g && image && image->handle()) {
+        detail::instance().g->DrawImage(image->handle(), x, y);
     }
 }
 
-// °ÑÏñËØÖ±½Ó»æÖÆµ½ÆÁÄ»ÉÏ£¬ÏñËØ¸ñÊ½±ØĞëÊÇ BGRA 32Î»¡£
+MINIVG_INLINE void drawimage(vgImage* image, float x, float y, float width, float height)
+{
+    if (detail::instance().g && image && image->handle()) {
+        detail::instance().g->DrawImage(image->handle(), x, y, width, height);
+    }
+}
+
+/* ç»˜åˆ¶ç²¾çµå›¾ç‰‡ï¼Œæ”¯æŒæ—‹è½¬ã€ç¼©æ”¾ã€é•œåƒã€‚
+ */
+MINIVG_INLINE void drawsprite(
+    vgImage* image,                        // ç»˜åˆ¶çš„å›¾ç‰‡
+    float sourceX, float sourceY,          // å›¾ç‰‡æºä½ç½®
+    float sourceWidth, float sourceHeight, // å›¾ç‰‡æºå¤§å°
+    float x, float y,                      // ç›®æ ‡ä½ç½®
+    float scaleX, float scaleY,            // ç¼©æ”¾
+    float rotation,                        // æ—‹è½¬è§’åº¦
+    float centerX, float centerY,          // æ—‹è½¬ä¸­å¿ƒ(0.0 - 1.0 ä¹‹é—´ï¼ŒæŒ‰æºå¤§å°æ¯”ä¾‹è®¾ç½®æ—‹è½¬ä¸­å¿ƒ)
+    float alpha
+)
+{
+    (void) alpha; // todo... å›¾ç‰‡ alpha æ”¯æŒ
+
+    Gdiplus::Graphics* g = detail::instance().g;
+    if (g && image) {
+        float cx = sourceWidth;
+        float cy = sourceHeight;
+
+        if (centerX >= 0.0f && centerX < 1.0f) {
+            centerX *= cx;
+        }
+        if (centerY >= 0.0f && centerY < 1.0f) {
+            centerY *= cy;
+        }
+
+        // ä¿å­˜çŸ©é˜µ
+        Gdiplus::Matrix saveMat;
+        g->GetTransform(&saveMat);
+
+        // ç¿»è½¬
+        if (scaleX < 0.0f) {
+            rotation = -rotation;
+        }
+        if (scaleY < 0.0f) {
+            rotation = -rotation;
+        }
+
+        // çŸ©é˜µæ“ä½œ
+        Gdiplus::Matrix m;
+        m.Translate(x, y);       // å¹³ç§»
+        m.Rotate(-rotation);     // æ—‹è½¬
+        m.Scale(scaleX, scaleY); // ç¼©æ”¾
+        g->SetTransform(&m);     // åº”ç”¨çŸ©é˜µå˜æ¢
+
+        /*
+        Gdiplus::ImageAttributes attribute;
+        Gdiplus::ColorMatrix cm = {
+            1.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 1.0f, 0.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+            0.0f, 0.0f, 0.0f, 0.5f, 0.0f,
+            0.0f, 0.0f, 0.0f, 0.0f, 0.0f,
+        };
+
+        attribute.SetColorMatrix(&cm, Gdiplus::ColorMatrixFlags::ColorMatrixFlagsSkipGrays);
+
+        // ç»˜åˆ¶å›¾ç‰‡
+        g->DrawImage(
+            image->handle(),
+            Gdiplus::RectF(-centerX, -centerY, cx, cy),
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            Gdiplus::UnitPixel, &attribute);
+        */
+        g->DrawImage(
+            image->handle(),
+            Gdiplus::RectF(-centerX, -centerY, cx, cy),
+            sourceX, sourceY, sourceWidth, sourceHeight,
+            Gdiplus::UnitPixel
+        );
+
+        // æ¢å¤ dc çŸ©é˜µå˜æ¢
+        g->SetTransform(&saveMat);
+    }
+}
+
+MINIVG_INLINE void drawsprite(
+    vgImage* image,              // ç»˜åˆ¶çš„å›¾ç‰‡
+    float x, float y,            // ç›®æ ‡ä½ç½®
+    float scaleX, float scaleY,  // ç¼©æ”¾
+    float rotation,              // æ—‹è½¬è§’åº¦
+    float centerX, float centerY // æ—‹è½¬ä¸­å¿ƒ(0.0 - 1.0 ä¹‹é—´ï¼ŒæŒ‰æºå¤§å°æ¯”ä¾‹è®¾ç½®æ—‹è½¬ä¸­å¿ƒ)
+)
+{
+    float cx = static_cast<float>(image->width());
+    float cy = static_cast<float>(image->height());
+    drawsprite(image, 0.0f, 0.0f, cx, cy, x, y, scaleX, scaleY, rotation, centerX, centerY);
+}
+
+// æŠŠåƒç´ ç›´æ¥ç»˜åˆ¶åˆ°å±å¹•ä¸Šï¼Œåƒç´ æ ¼å¼å¿…é¡»æ˜¯ BGRA 32ä½ã€‚
 MINIVG_INLINE void draw_pixels(float x, float y, float width, float height, const void* pixels, int imageWidth, int imageHeight)
 {
-    Gdiplus::Graphics* g = detail::vgContext<>::instance.g;
+    Gdiplus::Graphics* g = detail::instance().g;
     if (g) {
         BYTE* data = (BYTE*) pixels;
         data += (imageWidth * 4) * (imageHeight - 1);
@@ -2067,13 +2297,28 @@ MINIVG_INLINE void draw_pixels(float x, float y, float width, float height, cons
     }
 }
 
+MINIVG_INLINE void draw_pixels(float x, float y, float width, float height, const void* pixels, int imageWidth, int imageHeight, int imageRowStride, vgFormat format)
+{
+    Gdiplus::Graphics* g = detail::instance().g;
+    if (g) {
+        BYTE* data = (BYTE*) pixels;
+        if (imageRowStride < 0) {
+            data += -imageRowStride * (imageHeight - 1);
+            Gdiplus::Bitmap bmp(imageWidth, imageHeight, imageRowStride, format, data);
+            g->DrawImage(&bmp, x, y, width, height);
+        }
+        else {
+            Gdiplus::Bitmap bmp(imageWidth, imageHeight, imageRowStride, format, data);
+            g->DrawImage(&bmp, x, y, width, height);
+        }
+    }
+}
+
 //---------------------------------------------------------------------------
-//
-// ¶àÃ½Ìå
-//
+// å¤šåª’ä½“
 //---------------------------------------------------------------------------
 
-//²¥·ÅÒôÀÖ
+// æ’­æ”¾éŸ³ä¹
 MINIVG_INLINE void play_music(PCTSTR filename)
 {
     std::basic_string<TCHAR> command = TEXT("open ");
@@ -2086,39 +2331,39 @@ MINIVG_INLINE void play_music(PCTSTR filename)
 
 MINIVG_INLINE void stop_music()
 {
-    mciSendString(TEXT("stop background"), nullptr, 0, nullptr);//!
+    mciSendString(TEXT("stop background"), nullptr, 0, nullptr); //!
     mciSendString(TEXT("close background"), nullptr, 0, nullptr);
 }
 
-// µ¼³ö×ÊÔ´µ½ÎÄ¼ş
-// ²Î¿¼ÎÄÕÂ£ºhttps://www.cnblogs.com/zjutlitao/p/3577592.html
+// å¯¼å‡ºèµ„æºåˆ°æ–‡ä»¶
+// å‚è€ƒæ–‡ç« ï¼šhttps://www.cnblogs.com/zjutlitao/p/3577592.html
 MINIVG_INLINE bool ExtractResource(LPCTSTR filename, LPCTSTR resource_type, LPCTSTR resource_name)
 {
-    // ´´½¨ÎÄ¼ş
+    // åˆ›å»ºæ–‡ä»¶
     HANDLE hFile = CreateFile(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_TEMPORARY, nullptr);
     if (hFile == INVALID_HANDLE_VALUE) {
         return false;
     }
 
-    // ²éÕÒ×ÊÔ´ÎÄ¼şÖĞ¡¢¼ÓÔØ×ÊÔ´µ½ÄÚ´æ¡¢µÃµ½×ÊÔ´´óĞ¡
-    HRSRC   hRes = FindResource(nullptr, resource_name, resource_type);
+    // æŸ¥æ‰¾èµ„æºæ–‡ä»¶ä¸­ã€åŠ è½½èµ„æºåˆ°å†…å­˜ã€å¾—åˆ°èµ„æºå¤§å°
+    HRSRC hRes   = FindResource(nullptr, resource_name, resource_type);
     HGLOBAL hMem = LoadResource(nullptr, hRes);
-    DWORD   dwSize = SizeofResource(nullptr, hRes);
+    DWORD dwSize = SizeofResource(nullptr, hRes);
 
-    // Ğ´ÈëÎÄ¼ş
-    DWORD dwWrite = 0;      // ·µ»ØĞ´Èë×Ö½Ú
+    // å†™å…¥æ–‡ä»¶
+    DWORD dwWrite = 0; // è¿”å›å†™å…¥å­—èŠ‚
     WriteFile(hFile, hMem, dwSize, &dwWrite, nullptr);
     CloseHandle(hFile);
 
     return true;
 }
 
-// ²¥·Å×ÊÔ´ÖĞµÄÒôÀÖ
+// æ’­æ”¾èµ„æºä¸­çš„éŸ³ä¹
 MINIVG_INLINE void play_resource_music(PCTSTR filename, PCTSTR resource_type)
 {
     std::basic_string<TCHAR> tempfile = ezTempPath();
     tempfile += TEXT("background.mp3");
-    // ½« mp3 ×ÊÔ´ÌáÈ¡ÎªÁÙÊ±ÎÄ¼ş
+    // å°† mp3 èµ„æºæå–ä¸ºä¸´æ—¶æ–‡ä»¶
     ExtractResource(tempfile.c_str(), resource_type, filename);
     play_resource_music(tempfile.c_str());
 }
@@ -2128,19 +2373,21 @@ MINIVG_INLINE void play_resource_music(int id, PCTSTR resource_type)
     return play_resource_music(MAKEINTRESOURCE(id), resource_type);
 }
 
-// ²¥·Å wav ÎÄ¼ş
+// æ’­æ”¾ wav æ–‡ä»¶
 MINIVG_INLINE int play_sound(PCTSTR filename, bool loop)
 {
     DWORD fdwSound = SND_FILENAME | SND_ASYNC;
-    if (loop)fdwSound |= SND_LOOP;
+    if (loop)
+        fdwSound |= SND_LOOP;
     return PlaySound(filename, 0, fdwSound);
 }
 
-// ²¥·Å×ÊÔ´ÖĞµÄ wav ÎÄ¼ş
+// æ’­æ”¾èµ„æºä¸­çš„ wav æ–‡ä»¶
 MINIVG_INLINE int play_resource_sound(PCTSTR filename, bool loop)
 {
     DWORD fdwSound = SND_RESOURCE | SND_ASYNC;
-    if (loop)fdwSound |= SND_LOOP;
+    if (loop)
+        fdwSound |= SND_LOOP;
     return PlaySound(filename, GetModuleHandle(nullptr), fdwSound);
 }
 
@@ -2149,28 +2396,26 @@ MINIVG_INLINE int play_resource_sound(int id, bool loop)
     return play_resource_sound(MAKEINTRESOURCE(id), loop);
 }
 
-// Í£Ö¹ÉùÒô²¥·Å
+// åœæ­¢å£°éŸ³æ’­æ”¾
 MINIVG_INLINE void stop_sound()
 {
     PlaySound(nullptr, nullptr, SND_FILENAME);
 }
 
 //---------------------------------------------------------------------------
-//
-// ¶Ô»°¿ò
-//
+// å¯¹è¯æ¡†
 //---------------------------------------------------------------------------
 
-// ÏûÏ¢¶Ô»°¿ò
+// æ¶ˆæ¯å¯¹è¯æ¡†
 MINIVG_INLINE int msgbox(const unistring& message, const unistring& title, int type)
 {
     return MessageBoxW(graph_window(), message.c_str(), title.c_str(), type);
 }
 
-// ÏÔÊ¾ÊäÈë¿ò
+// æ˜¾ç¤ºè¾“å…¥æ¡†
 MINIVG_INLINE unistring inputbox(const unistring& message, const unistring& title, const unistring& default_value)
 {
-    detail::ezInputBox box;
+    detail::vgInputBox box;
     if (box.execute(graph_window(), title, message, default_value)) {
         return box.text();
     }
@@ -2179,6 +2424,10 @@ MINIVG_INLINE unistring inputbox(const unistring& message, const unistring& titl
     }
 }
 
-}// end namespace minivg
+} // end namespace minivg
 
-#endif //EZGDI_INL_20200708233153
+#ifdef __GNUC__
+    #pragma GCC diagnostic pop
+#endif
+
+#endif // EZGDI_INL_20200708233153

@@ -17,11 +17,11 @@ void OnKeyDown(int Key);
 int main(int argc, char* argv[])
 {
     //初始化窗口
-    initgraph(1024, 600, EZ_SIZEABLE);
+    initgraph(1024, 600, VG_SIZEABLE);
     //设置按键响应函数
     key_push_event(OnKeyDown);
     //绘图效果
-    effect_level(EZ_QUALITY);
+    effect_level(VG_QUALITY);
     //播放音乐
     play_music(TEXT("mp3音乐"));
 
@@ -54,27 +54,23 @@ int main(int argc, char* argv[])
     display_event(display);
 
     // 绘图效果（高质量）
-    effect_level(EZ_QUALITY);
+    effect_level(VG_QUALITY);
     
     // 主程序循环
     return start_app();
 }
 
-
-void display()
+void draw_demo()
 {
-    //清屏
-    clear(0, 128, 255);
-
-    //画笔颜色
+    // 画笔颜色
     pen_color(0xFFFFFFFF);
 
-    //画笔样式，实心画笔
-    pen_style(EZ_SOLID);
+    // 画笔样式，实心画笔
+    pen_style(VG_SOLID);
 
-    //绘制三条不同宽度的直线
+    // 绘制三条不同宽度的直线
 
-    pen_width(1);          //画笔宽度
+    pen_width(1); // 画笔宽度
     draw_line(10, 10, 110, 10);
 
     pen_width(2);
@@ -83,10 +79,10 @@ void display()
     pen_width(4);
     draw_line(10, 30, 110, 30);
 
-    //画笔样式，点画模式
-    pen_style(EZ_DOT);
+    // 画笔样式，点画模式
+    pen_style(VG_DOT);
 
-    //绘制三条不同宽度的直线
+    // 绘制三条不同宽度的直线
     pen_width(1);
     draw_line(120, 10, 220, 10);
 
@@ -96,26 +92,26 @@ void display()
     pen_width(4);
     draw_line(120, 30, 220, 30);
 
-    pen_style(PS_SOLID);
+    pen_style(VG_SOLID);
     pen_width(1.0f);
     pen_color(255, 255, 255, 255);
 
-    //绘制基本图元
+    // 绘制基本图元
     draw_rect(10, 50, 100, 40);
     draw_roundrect(10, 100, 100, 40, 10, 10);
-    draw_ellipse(10 + 50, 150 + 20, 100, 40);
-    draw_circle(10 + 50, 200 + 20, 40);
+    draw_ellipse(10 + 50, 150 + 20, 50, 20);
+    draw_circle(10 + 50, 200 + 20, 20);
 
-    //填充颜色
+    // 填充颜色
     fill_color(0, 255, 0, 255);
 
-    //填充模式绘制基本图元
+    // 填充模式绘制基本图元
     fill_rect(120, 50, 100, 40);
     fill_roundrect(120, 100, 100, 40, 10, 10);
-    fill_ellipse(120 + 50, 150 + 20, 100, 40);
-    fill_circle(120 + 50, 200 + 20, 40);
+    fill_ellipse(120 + 50, 150 + 20, 50, 20);
+    fill_circle(120 + 50, 200 + 20, 20);
 
-    //多边形
+    // 多边形
     vec2f points[] = {
         vec2f(30, 420),
         vec2f(100, 500),
@@ -123,38 +119,68 @@ void display()
         vec2f(300, 500),
     };
     pen_color(255, 255, 0, 255);
-    draw_polygon(points, 4);   //绘制多边形
+    draw_polygon(points, 4); // 绘制多边形
 
     fill_color(0, 255, 0, 64);
-    fill_polygon(points, 4);   //填充多边形
+    fill_polygon(points, 4); // 填充多边形
 
-    //文字输出
-    pen_color(0x7FFFFFFF);          //绘制的边框颜色
-    font_name("微软雅黑");          //字体名称
-    font_size(16);                  //字体大小
-    font_color(255, 0, 0, 128);     //字体颜色
-    draw_rect(10, 250, 200, 50);    //绘制边框
-    drawtext(10, 250, 200, 50, L"文字左对齐。", EZ_CENTER_V); //输出字体
-    font_color(0, 255, 0, 128);
+    // 文字输出
+    pen_color(0x7FFFFFFF);                                    // 绘制的边框颜色
+    font_name(L"微软雅黑");                                   // 字体名称
+    font_size(16);                                            // 字体大小
+    font_color(255, 0, 0, 255);                               // 字体颜色
+    draw_rect(10, 250, 200, 50);                              // 绘制边框
+    drawtext(10, 250, 200, 50, L"文字左对齐。", VG_CENTER_V); // 输出字体
+    font_color(0, 255, 0, 255);
     draw_rect(10, 300, 200, 50);
-    drawtext(10, 300, 200, 50, L"文字居中显示。", EZ_CENTER);
-    font_color(0, 0, 255, 128);
+    drawtext(10, 300, 200, 50, L"文字居中显示。", VG_CENTER);
+    font_color(0, 0, 255, 255);
     draw_rect(10, 350, 200, 50);
-    drawtext(10, 350, 200, 50, L"文字右对齐。", EZ_CENTER_V|EZ_RIGHT);
+    drawtext(10, 350, 200, 50, L"文字右对齐。", VG_CENTER_V | VG_RIGHT);
 
-    //图片绘制
-    ezImage* image = loadimage("assets/nv.png");
+    // 图片绘制
+    vgImage* image     = loadimage("assets/sprite.png");
     static float angle = 0.0f;
 
-    for(int i=0; i<10; ++i){
-        rotate_image(image, 512 + i * 32, 200 + i * 20, image->width() / 1 - i * 40, image->height() / 1 - i * 40, angle + i * 16);
+    for (int i = 0; i < 10; ++i) {
+        drawsprite(
+            image, 640.0f, 256.0f, 1.0f - i * 0.05f, 1.0f - i * 0.05f,
+            // angle + i * 4 + i * angle * 0.5f,
+            -(i + 1.0f) * angle * 0.05f, 0.5f, 0.5f
+        );
     }
+
+    angle += 1.0f;
+
+    float cx       = image->width();
+    float cy       = image->height();
+    static float a = 0.0f;
+    float scale    = 0.25f;
+    vec2f center   = vec2f(cx / 2, 0.75f);
+
+    drawsprite(image, 0.0f, 0.0f, cx, cy, mouse.x, mouse.y, scale, scale, a, center.x, center.y);
+    a++;
+}
+
+void display()
+{
+    // 清屏
+    clear(0, 128, 255);
+
+    draw_demo();
+
+    show_fps();
 }
 </pre></code>
-![运行效果图](https://github.com/sdragonx/minivg/blob/master/sample.jpg)
+![运行效果图](https://github.com/sdragonx/minivg/blob/master/screen.png)
 
 
 # 更新历史
+
+## 2026-02-20
+修复 bug，统一命名，增加帧率控制。
+
+## 2025-01-16
 
 ## 2022-05-27
 修正 bug。
