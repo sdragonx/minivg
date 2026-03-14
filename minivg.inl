@@ -56,9 +56,17 @@ namespace minivg {
 namespace detail {
 
 // 获取浮点时间戳
-inline float tick_time()
+inline double tick_time()
 {
-    return static_cast<float>(clock()) / static_cast<float>(CLOCKS_PER_SEC);
+    // return static_cast<double>(clock()) / static_cast<float>(CLOCKS_PER_SEC);
+    // return static_cast<double>(GetTickCount()) * 0.001f;
+    // return static_cast<double>(timeGetTime()) * 0.001f;
+    //*
+    LARGE_INTEGER t, freq;
+    QueryPerformanceFrequency(&freq);
+    QueryPerformanceCounter(&t);
+    return static_cast<double>(t.QuadPart * 1000ULL / freq.QuadPart) * 0.001f;
+    //*/
 }
 
 //---------------------------------------------------------------------------
@@ -687,29 +695,29 @@ protected:
 class vgContext : public vgWindow
 {
 public:
-    HDC hdc;                         // GDI 绘图设备
-    Gdiplus::Graphics* g;            // GDIPlus 设备
-    HBITMAP pixelbuf;                // 像素缓冲区
+    HDC hdc;                              // GDI 绘图设备
+    Gdiplus::Graphics* g;                 // GDIPlus 设备
+    HBITMAP pixelbuf;                     // 像素缓冲区
 
-    int effectLevel;                 // 效果等级
+    int effectLevel;                      // 效果等级
 
-    Gdiplus::Pen* pen;               // 画笔
-    Gdiplus::SolidBrush* brush;      // 画刷
-    Gdiplus::Font* font;             // 字体
-    Gdiplus::SolidBrush* font_color; // 字体颜色
-    unistring fontName;              // 字体名字
-    float fontSize;                  // 字体大小
-    int fontStyle;                   // 字体样式
-    bool fontIsChange;               // 标记字体属性是否改变，如果属性改变就重新创建字体
+    Gdiplus::Pen* pen;                    // 画笔
+    Gdiplus::SolidBrush* brush;           // 画刷
+    Gdiplus::Font* font;                  // 字体
+    Gdiplus::SolidBrush* textBrush;       // 字体颜色
+    unistring fontName;                   // 字体名字
+    float fontSize;                       // 字体大小
+    int fontStyle;                        // 字体样式
+    bool fontIsChange;                    // 标记字体属性是否改变，如果属性改变就重新创建字体
 
-    WNDPROC prevWndProc;             // 如果是设置已有的窗口，保存已有窗口的消息处理函数
+    WNDPROC prevWndProc;                  // 如果是设置已有的窗口，保存已有窗口的消息处理函数
 
-    int initParam;                   // 创建参数
-    RECT winRect;                    // 窗口模式下窗口大小
-    bool fullscreen;                 // 是否全屏
+    int initParam;                        // 创建参数
+    RECT winRect;                         // 窗口模式下窗口大小
+    bool fullscreen;                      // 是否全屏
 
-    vec4i viewRect;                  // 视口
-    bool running;                    // 程序是否运行
+    Gdiplus::Rect viewRect;               // 视口
+    std::vector<Gdiplus::Rect> clipStack; // 剪裁矩形堆栈
 
     // 键盘事件
     VG_KEY_EVENT OnKeyDown;
@@ -728,11 +736,14 @@ public:
     // 窗口绘制事件
     VG_PAINT_EVENT OnPaint;
 
-    // 帧率控制
-    int fps;             // 帧率
-    float delayRequired; // 帧率需要的延迟时间
+    // 程序是否运行
+    bool running;
 
-    vgResource resource; // 资源管理器
+    // 帧率控制
+    int fps;              // 帧率
+    double delayRequired; // 帧率需要的延迟时间
+
+    vgResource resource;  // 资源管理器
 
 private:
     ULONG_PTR token;
@@ -751,14 +762,16 @@ public:
         fontName(MINIVG_DEFAULT_FONT),
         fontSize(12.0f),
         fontStyle(VG_NORMAL),
-        running(true),
 
         OnKeyDown(), OnKeyUp(), OnKeyPress(),
         OnMouseDown(), OnMouseUp(), OnMouseMove(),
         OnTimer(),
         OnPaint(),
+
+        running(true),
+
         fps(60),
-        delayRequired(1.0f / 60.0f)
+        delayRequired(1.0 / 60.0)
     {
         prevWndProc = nullptr;
         gdiplusInit();
@@ -832,20 +845,20 @@ public:
             return;
         }
 
-        if (width != viewRect[2] || height != viewRect[3]) {
+        if (width != viewRect.Width || height != viewRect.Height) {
             pixelbuf = bm_create(width, height);
             SelectObject(hdc, pixelbuf);
             g = new Gdiplus::Graphics(hdc);
             effect_level(effectLevel);
         }
 
-        viewRect = vec4i(x, y, width, height);
+        viewRect = Gdiplus::Rect(x, y, width, height);
     }
 
     // 将缓冲区的图像绘制到目标 HDC
     void bitblt(HDC dc)
     {
-        BitBlt(dc, viewRect[0], viewRect[1], viewRect[2], viewRect[3], hdc, 0, 0, SRCCOPY);
+        BitBlt(dc, viewRect.X, viewRect.Y, viewRect.Width, viewRect.Height, hdc, 0, 0, SRCCOPY);
     }
 
     // 设置窗口置顶
@@ -880,9 +893,9 @@ public:
             this->repaint();
             break;
         case WM_SIZE: {
-            int w = LOWORD(lParam) - viewRect.x;
-            int h = HIWORD(lParam) - viewRect.y;
-            this->viewport(viewRect.x, viewRect.y, w, h);
+            int w = LOWORD(lParam) - viewRect.X;
+            int h = HIWORD(lParam) - viewRect.Y;
+            this->viewport(viewRect.X, viewRect.Y, w, h);
             break;
         }
         case WM_PAINT:
@@ -955,10 +968,10 @@ protected:
     {
         Gdiplus::GdiplusStartup(&token, &input, nullptr);
 
-        pen        = new Gdiplus::Pen(Gdiplus::Color::Black);
-        brush      = new Gdiplus::SolidBrush(Gdiplus::Color::White);
-        font       = new Gdiplus::Font(fontName.c_str(), fontSize, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint, nullptr);
-        font_color = new Gdiplus::SolidBrush(Gdiplus::Color::Black);
+        pen       = new Gdiplus::Pen(Gdiplus::Color::Black);
+        brush     = new Gdiplus::SolidBrush(Gdiplus::Color::White);
+        font      = new Gdiplus::Font(fontName.c_str(), fontSize, Gdiplus::FontStyleRegular, Gdiplus::UnitPoint, nullptr);
+        textBrush = new Gdiplus::SolidBrush(Gdiplus::Color::Black);
 
         hdc = CreateCompatibleDC(nullptr);
     }
@@ -971,7 +984,7 @@ protected:
         detail::safe_delete(pen);
         detail::safe_delete(brush);
         detail::safe_delete(font);
-        detail::safe_delete(font_color);
+        detail::safe_delete(textBrush);
 
         Gdiplus::GdiplusShutdown(token);
     }
@@ -1008,12 +1021,14 @@ MINIVG_INLINE void WINAPI updateThread(void* arg)
 {
     (void) arg;
 
-    float lastTime = tick_time();
+    // timeBeginPeriod(1); // 设置系统时钟的最小分辨率为 1 毫秒
+
+    double lastTime = tick_time();
     while (singleton<vgContext>::instance.running) {
         // 帧率控制
-        const float delay = singleton<vgContext>::instance.delayRequired;
+        const double delay = singleton<vgContext>::instance.delayRequired;
         if (delay > 0.0f) {
-            float t = tick_time();
+            double t = tick_time();
             if (t - lastTime >= delay) {
                 lastTime = t;
                 // 刷新窗口
@@ -1028,6 +1043,8 @@ MINIVG_INLINE void WINAPI updateThread(void* arg)
             singleton<vgContext>::instance.repaint();
         }
     }
+
+    // timeEndPeriod(1); // 结束高精度计时
 }
 
 } // end namespace detail
@@ -1243,7 +1260,7 @@ MINIVG_INLINE int show_fps()
     str += unistring(fps_total);
 
     setfont(MINIVG_DEFAULT_FONT, 12);
-    font_color(255, 255, 255);
+    text_color(255, 255, 255);
     textout(view_width() - 80.0f, 0.0f, str);
 
     if (GetTickCount() - t > 1000) {
@@ -1366,6 +1383,45 @@ MINIVG_INLINE int view_height()
     return bm.bmHeight;
 }
 
+// 设置剪裁矩形
+MINIVG_INLINE void cliprect(int x, int y, int width, int height)
+{
+    if (detail::instance().g)
+        detail::instance().g->SetClip(Gdiplus::Rect(x, y, width, height));
+}
+
+// 压入剪裁矩形
+MINIVG_INLINE void push_cliprect(int x, int y, int width, int height)
+{
+    if (detail::instance().g) {
+        if (detail::instance().g->IsClipEmpty()) {
+            // 如果是空则不添加
+        }
+        else {
+            Gdiplus::Rect rect;
+            detail::instance().g->GetClipBounds(&rect);
+            detail::instance().clipStack.push_back(rect);
+        }
+        detail::instance().g->SetClip(Gdiplus::Rect(x, y, width, height));
+    }
+}
+
+// 弹出剪裁矩形
+MINIVG_INLINE void pop_cliprect()
+{
+    if (detail::instance().g) {
+        if (!detail::instance().clipStack.empty()) {
+            Gdiplus::Rect rect = detail::instance().clipStack.back();
+            detail::instance().clipStack.pop_back();
+            detail::instance().g->SetClip(rect);
+        }
+        else {
+            // 如果是空，则重置剪裁
+            detail::instance().g->ResetClip();
+        }
+    }
+}
+
 // 背景缓冲绘制到目标 HDC
 MINIVG_INLINE void framebuf_blt(HDC hdc)
 {
@@ -1419,7 +1475,7 @@ MINIVG_INLINE int effect_level(int level)
 MINIVG_INLINE void set_fps(int value)
 {
     detail::instance().fps           = value;
-    detail::instance().delayRequired = value ? 1.0f / static_cast<float>(value) : -1.0f;
+    detail::instance().delayRequired = value ? 1.0 / static_cast<double>(value) : -1.0f;
 }
 
 /* 返回帧率
@@ -1436,7 +1492,18 @@ MINIVG_INLINE void clear(BYTE r, BYTE g, BYTE b, BYTE a)
         detail::instance().g->Clear(Gdiplus::Color(a, r, g, b));
 }
 
-// 更改画笔颜色
+// 获取画笔颜色
+MINIVG_INLINE vec4ub pen_color()
+{
+    if (detail::instance().pen) {
+        Gdiplus::Color color;
+        detail::instance().pen->GetColor(&color);
+        return vec4ub(color.GetR(), color.GetG(), color.GetB(), color.GetA());
+    }
+    return vec4ub();
+}
+
+// 设置画笔颜色
 MINIVG_INLINE void pen_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if (detail::instance().pen)
@@ -1449,38 +1516,10 @@ MINIVG_INLINE void pen_color(COLORREF argb)
         detail::instance().pen->SetColor(Gdiplus::Color(argb));
 }
 
-MINIVG_INLINE void pen_color(vec4ub color)
+MINIVG_INLINE void pen_color(vec4ub rgba)
 {
     if (detail::instance().pen)
-        detail::instance().pen->SetColor(Gdiplus::Color(color.a, color.r, color.g, color.b));
-}
-
-// 获取画笔颜色
-MINIVG_INLINE COLORREF pen_color()
-{
-    Gdiplus::Color color;
-    if (detail::instance().pen) {
-        detail::instance().pen->GetColor(&color);
-    }
-    return color.GetValue();
-}
-
-/*
-vec4ub pen_color()
-{
-    Gdiplus::Color color;
-    if(detail::instance().pen) {
-        detail::instance().pen->GetColor(&color);
-    }
-    return vec4ub(color.GetRed(), color.GetGreen(), color.GetBlue(), color.GetAlpha());
-}
-*/
-
-// 画笔宽度
-MINIVG_INLINE void pen_width(float width)
-{
-    if (detail::instance().pen)
-        detail::instance().pen->SetWidth(width);
+        detail::instance().pen->SetColor(Gdiplus::Color(rgba.a, rgba.r, rgba.g, rgba.b));
 }
 
 // 获取画笔宽度
@@ -1489,28 +1528,50 @@ MINIVG_INLINE float pen_width()
     return detail::instance().pen ? detail::instance().pen->GetWidth() : 1.0f;
 }
 
-// 设置画笔模式
+// 设置画笔宽度
+MINIVG_INLINE void pen_width(float width)
+{
+    if (detail::instance().pen)
+        detail::instance().pen->SetWidth(width);
+}
+
+// 返回画笔样式
+MINIVG_INLINE vgPenStyle pen_style()
+{
+    if (detail::instance().pen) {
+        return static_cast<vgPenStyle>(detail::instance().pen->GetDashStyle());
+    }
+    return VG_SOLID;
+}
+
+// 设置画笔样式
 MINIVG_INLINE void pen_style(int mode)
 {
     if (detail::instance().pen) {
-        // if(mode != VG_CUSTOM){//取消自定义点画模式
-        //     ezDashStyle(nullptr, 0);
-        // }
-        detail::instance().pen->SetDashStyle(Gdiplus::DashStyle(mode));
+        detail::instance().pen->SetDashStyle(static_cast<Gdiplus::DashStyle>(mode));
     }
 }
 
-// 设置点画模式间隔
+// 设置点画模图案样式
 MINIVG_INLINE void dash_style(const float* dash, int size)
 {
     if (detail::instance().pen) {
-        // if(detail::instance().pen->GetDashStyle() == Gdiplus::DashStyleCustom){
         detail::instance().pen->SetDashPattern(dash, size);
-        //}
     }
 }
 
-// 更改填充颜色
+// 获取填充颜色
+MINIVG_INLINE vec4ub fill_color()
+{
+    if (detail::instance().brush) {
+        Gdiplus::Color color;
+        detail::instance().brush->GetColor(&color);
+        return vec4ub(color.GetR(), color.GetG(), color.GetB(), color.GetA());
+    }
+    return vec4ub();
+}
+
+// 设置填充颜色
 MINIVG_INLINE void fill_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
     if (detail::instance().brush)
@@ -1523,21 +1584,22 @@ MINIVG_INLINE void fill_color(COLORREF argb)
         detail::instance().brush->SetColor(Gdiplus::Color(argb));
 }
 
-// 获取填充颜色
-MINIVG_INLINE COLORREF fill_color()
+MINIVG_INLINE void fill_color(vec4ub rgba)
 {
-    Gdiplus::Color color;
-    if (detail::instance().brush) {
-        detail::instance().brush->GetColor(&color);
-    }
-    return color.GetValue();
+    if (detail::instance().brush)
+        detail::instance().brush->SetColor(Gdiplus::Color(rgba.a, rgba.r, rgba.g, rgba.b));
 }
 
 // 绘制一个点
 MINIVG_INLINE void draw_point(float x, float y, float size)
 {
     if (detail::instance().g) {
-        Gdiplus::SolidBrush brush(pen_color());
+        // 获取画笔颜色
+        Gdiplus::Color color;
+        detail::instance().pen->GetColor(&color);
+        // 创建画刷
+        Gdiplus::SolidBrush brush(color);
+        // 绘制圆
         float half = size * 0.5f;
         detail::instance().g->FillEllipse(&brush, x - half, y - half, size, size);
     }
@@ -1681,13 +1743,37 @@ MINIVG_INLINE void fill_polygon(const vec2f* points, size_t size)
 // 字体函数
 //---------------------------------------------------------------------------
 
+// 获取字体名称
+MINIVG_INLINE unistring font_name()
+{
+    return detail::instance().fontName;
+}
+
+// 获取字体大小
+MINIVG_INLINE int font_size()
+{
+    return detail::instance().fontSize;
+}
+
+// 获取字体样式
+MINIVG_INLINE int font_style()
+{
+    return detail::instance().fontStyle;
+}
+
 // 设置字体。字体名字、大小、风格
 MINIVG_INLINE void setfont(const unistring& name, float size, vgFontStyle style)
 {
+    detail::instance().fontName  = name;
+    detail::instance().fontSize  = size;
+    detail::instance().fontStyle = style;
+
     if (detail::instance().font) {
         delete detail::instance().font;
-        detail::instance().font = new Gdiplus::Font(name.c_str(), size, style, Gdiplus::UnitPoint, nullptr);
     }
+
+    detail::instance().font         = new Gdiplus::Font(name.c_str(), size, style, Gdiplus::UnitPoint, nullptr);
+    detail::instance().fontIsChange = false;
 }
 
 MINIVG_INLINE void setfont(const unistring& name, float size, bool bold, bool, bool underline, bool strikeout)
@@ -1723,25 +1809,37 @@ MINIVG_INLINE void font_style(int style)
     detail::instance().fontIsChange = true;
 }
 
-// todo... 获取字体属性
-// unistring font_name();
-// int font_size();
-// int font_style();
-
-// 字体颜色
-MINIVG_INLINE void font_color(BYTE r, BYTE g, BYTE b, BYTE a)
+// 获取文字颜色
+MINIVG_INLINE vec4ub text_color()
 {
-    if (detail::instance().font_color)
-        detail::instance().font_color->SetColor(Gdiplus::Color(a, r, g, b));
+    if (detail::instance().textBrush) {
+        Gdiplus::Color color;
+        detail::instance().textBrush->GetColor(&color);
+        return vec4ub(color.GetR(), color.GetG(), color.GetB(), color.GetA());
+    }
+    return vec4ub();
 }
 
-MINIVG_INLINE void font_color(COLORREF color)
+// 设置文字颜色
+MINIVG_INLINE void text_color(BYTE r, BYTE g, BYTE b, BYTE a)
 {
-    if (detail::instance().font_color) {
-        Gdiplus::Color argb;
-        argb.SetFromCOLORREF(color);
-        detail::instance().font_color->SetColor(argb);
+    if (detail::instance().textBrush)
+        detail::instance().textBrush->SetColor(Gdiplus::Color(a, r, g, b));
+}
+
+MINIVG_INLINE void text_color(COLORREF argb)
+{
+    if (detail::instance().textBrush) {
+        Gdiplus::Color color;
+        color.SetFromCOLORREF(argb);
+        detail::instance().textBrush->SetColor(color);
     }
+}
+
+MINIVG_INLINE void text_color(vec4ub rgba)
+{
+    if (detail::instance().textBrush)
+        detail::instance().textBrush->SetColor(Gdiplus::Color(rgba.a, rgba.r, rgba.g, rgba.b));
 }
 
 // 输出文字
@@ -1761,7 +1859,7 @@ MINIVG_INLINE void textout(float x, float y, const wchar_t* text, size_t length)
 
         Gdiplus::StringFormat format;
         vg.g->DrawString(
-            text, INT(length), vg.font, Gdiplus::PointF(x, y), &format, vg.font_color
+            text, INT(length), vg.font, Gdiplus::PointF(x, y), &format, vg.textBrush
         );
     }
     else {
@@ -1805,7 +1903,7 @@ MINIVG_INLINE void drawtext(float x, float y, float width, float height, const u
         format.SetLineAlignment((Gdiplus::StringAlignment) vAlign); // 垂直对齐
         Gdiplus::RectF rect(x, y, width, height);
         detail::instance().g->DrawString(
-            text.c_str(), INT(text.length()), detail::instance().font, rect, &format, detail::instance().font_color
+            text.c_str(), INT(text.length()), detail::instance().font, rect, &format, detail::instance().textBrush
         );
     }
 }

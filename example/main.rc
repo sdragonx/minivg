@@ -1,0 +1,8 @@
+#include "resource.h"
+
+ICON_MAIN       ICON    "main.ico"
+
+#ifndef RC_MSVC
+1 24 "viewstyle.Manifest"
+#endif
+

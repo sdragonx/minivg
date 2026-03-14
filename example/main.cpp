@@ -1,63 +1,120 @@
-# minivg
-　　今天正式发布一个初学者用的程序库——minivg。这个库结构简洁，使用方便，容易理解。包含基础的绘图函数，键盘鼠标控制，音乐、声音播放，是写小作品的不二选择。<br>
-　　值得一提的是，这个库封装了 GDI+ 绘图接口，GDI+ 是 Windows Vista 之后的系统内置的绘图 API（XP 也能使用），比起传统 GDI，在图像抗锯齿、ALPHA 半透明等方面得到了支持，非常容易绘制出美轮美奂的图像。Vista 之后的界面绘制效果，离不开 GDI+ 的支持。<br>
-　　整个库不需要 lib 文件，也不需要 dll 文件，只需要在你的 cpp 文件里面 #include <minivg.hpp> 它就能工作！测试过的编译器有：C++Builder，vs2017+，gcc。<br>
-  
-　　主文件：<br>
-　　　　minivg.hpp    主要接口，有注释说明。<br>
-　　　　minivg.inl    代码实现。<br>
-　　项目Github地址：https://github.com/sdragonx/minivg<br>
-　　博客地址：https://www.cnblogs.com/sdragonx/p/13184935.html<br>
-　　开源协议：MIT（代码在minivg.inl里面，开源，有兴趣自己可以琢磨）<br>
+﻿
+#include "pch.h"
 
-# Exsample:
+//---------------------------------------------------------------------------
+// 变量
+//---------------------------------------------------------------------------
 
-<pre><code>
-void OnKeyDown(int Key);
+vec2f mouse;
+vec2f lastpos;
+bool buttonDown = false;
+
+//---------------------------------------------------------------------------
+// 函数
+//---------------------------------------------------------------------------
+
+void key_push(int key);                    // 按键按下
+void key_pop(int key);                     // 按键弹起
+void input(int key);                       // 字符输入
+void mouse_push(int x, int y, int button); // 鼠标按下
+void mouse_pop(int x, int y, int button);  // 鼠标弹起
+void mouse_move(int x, int y, int button); // 鼠标移动
+void display();                            // 显示
+
+//---------------------------------------------------------------------------
+// main
+//---------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    //初始化窗口
-    initgraph(1024, 600, VG_SIZEABLE);
-    //设置按键响应函数
-    key_push_event(OnKeyDown);
-    //绘图效果
-    effect_level(VG_QUALITY);
-    //播放音乐
-    play_music(TEXT("mp3音乐"));
 
-    //主程序循环
-    while(do_events()){
-        clear(0, 0, 0);//清屏
-        pen_color(255, 0, 255, 128);//半透明红色
-        draw_line(10, 10, 100, 100);//绘制一条线
-        fill_color(0, 255, 0, 128);//半透明绿色
-        fill_rect(100, 100, 200, 200);//填充半透明矩形
-    };
-    
-    //关闭库，释放资源
-    quit();
-}
-</pre></code>
+    initgraph(1024, 576, VG_SIZEABLE);
+    set_title(L"minivg 图形库");
 
-# Exsample:（一些简单绘图的例子）
-
-<pre><code>
-
-void display();
-
-int main(int argc, char* argv[])
-{
-    // 初始化窗口
-    initgraph("窗口标题", 520, 640);
-
-    // 设置绘制函数
+    key_push_event(key_push);
+    mouse_push_event(mouse_push);
+    mouse_move_event(mouse_move);
     display_event(display);
 
-    // 绘图效果（高质量）
-    effect_level(VG_QUALITY);
-    
-    // 主程序循环
+    // 效果等级 VG_SPEED VG_MEDIUM VG_QUALITY
+    effect_level(VG_SPEED);
+
+    set_fps(60);
+
     return start_app();
+}
+
+//---------------------------------------------------------------------------
+
+// 按键按下
+void key_push(int key)
+{
+    switch (key) {
+    case VK_F1:
+        effect_level(VG_SPEED);
+        // effect = L"速度";
+        break;
+    case VK_F2:
+        effect_level(VG_MEDIUM);
+        // effect = L"中等";
+        break;
+    case VK_F3:
+        // effect_level(VG_QUALITY);
+        // effect = L"质量";
+        break;
+    case '1':
+    case '2':
+    case '3':
+    case '4':
+    case '5':
+    case '6':
+    case '7':
+    case '8':
+    case '9':
+        break;
+    case ' ':
+        break;
+    }
+}
+
+// 按键弹起
+void key_pop(int key)
+{
+}
+
+// 字符输入
+void input(int key)
+{
+}
+
+// 鼠标按下
+void mouse_push(int x, int y, int button)
+{
+    // play_resource_sound(ID_SOUND);
+
+    lastpos    = mouse;
+    buttonDown = true;
+
+    if (button == VG_LEFT) {
+    }
+    else {
+    }
+}
+
+// 鼠标弹起
+void mouse_pop(int x, int y, int button)
+{
+    buttonDown = false;
+}
+
+// 鼠标移动
+void mouse_move(int x, int y, int button)
+{
+    mouse = vec2f(x, y);
+
+    if (buttonDown) {
+        vec2f offset = mouse - lastpos;
+        lastpos      = mouse;
+    }
 }
 
 void draw_demo()
@@ -162,6 +219,7 @@ void draw_demo()
     a++;
 }
 
+// 显示
 void display()
 {
     // 清屏
@@ -171,26 +229,3 @@ void display()
 
     show_fps();
 }
-</pre></code>
-![运行效果图](https://github.com/sdragonx/minivg/blob/master/screen.png)
-
-
-# 更新历史
-
-## 2026-03-14
-修复 bug，增加剪裁矩形。
-
-## 2026-02-20
-修复 bug，统一命名，增加帧率控制。
-
-## 2025-01-16
-
-## 2022-05-27
-修正 bug。
-
-## 2021-07-30
-库名字由 EZGDI 正式更名为 minivg，计划做成 OpenCV 的迷你版。<br>
-支持在对接到已有窗口中，创建背景缓冲区，通过 framebuf_blt() 函数显示。<br>
-增加多线程渲染（未加入锁帧功能）。<br>
-支持全屏和窗口动态切换：fullscreen(bool) 函数。<br>
-支持直接绘制内存二进制数据：draw_pixels() 函数，像素必须是 ABGR 格式。<br>
