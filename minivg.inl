@@ -1683,18 +1683,30 @@ MINIVG_INLINE void fill_roundrect(float x, float y, float width, float height, f
     }
 }
 
-// 绘制椭圆，xy 为圆心
-MINIVG_INLINE void draw_ellipse(float x, float y, float rx, float ry)
+// 绘制椭圆
+MINIVG_INLINE void draw_ellipse(float ox, float oy, float rx, float ry)
 {
     if (detail::instance().g)
-        detail::instance().g->DrawEllipse(detail::instance().pen, x - rx, y - ry, rx * 2.0f, ry * 2.0f);
+        detail::instance().g->DrawEllipse(detail::instance().pen, ox - rx, oy - ry, rx * 2.0f, ry * 2.0f);
+}
+
+MINIVG_INLINE void draw_ellipse_r(float x, float y, float width, float height)
+{
+    if (detail::instance().g)
+        detail::instance().g->DrawEllipse(detail::instance().pen, x, y, width, height);
 }
 
 // 填充椭圆
-MINIVG_INLINE void fill_ellipse(float x, float y, float rx, float ry)
+MINIVG_INLINE void fill_ellipse(float ox, float oy, float rx, float ry)
 {
     if (detail::instance().g)
-        detail::instance().g->FillEllipse(detail::instance().brush, x - rx, y - ry, rx * 2.0f, ry * 2.0f);
+        detail::instance().g->FillEllipse(detail::instance().brush, ox - rx, oy - ry, rx * 2.0f, ry * 2.0f);
+}
+
+MINIVG_INLINE void fill_ellipse_r(float x, float y, float width, float height)
+{
+    if (detail::instance().g)
+        detail::instance().g->FillEllipse(detail::instance().brush, x, y, width, height);
 }
 
 // 绘制空心圆，xy 为圆心

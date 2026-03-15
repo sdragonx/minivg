@@ -995,17 +995,29 @@ void draw_roundrect(float x, float y, float width, float height, float cx, float
  */
 void fill_roundrect(float x, float y, float width, float height, float cx, float cy);
 
-/* 绘制空心椭圆
- * x, y             圆心坐标
+/* 通过圆心半径绘制空心椭圆
+ * ox, oy           圆心坐标
  * rx, ry           椭圆的横向半径和纵向半径
  */
-void draw_ellipse(float x, float y, float rx, float ry);
+void draw_ellipse(float ox, float oy, float rx, float ry);
 
-/* 填充椭圆
- * x, y             圆心坐标
+/* 通过圆心半径填充椭圆
+ * ox, oy           圆心坐标
  * rx, ry           椭圆的横向半径和纵向半径
  */
-void fill_ellipse(float x, float y, float rx, float ry);
+void fill_ellipse(float ox, float oy, float rx, float ry);
+
+/* 通过矩形范围绘制空心椭圆
+ * x, y             矩形左上角坐标
+ * width, height    矩形宽度高度
+ */
+void draw_ellipse_r(float x, float y, float width, float height);
+
+/* 通过矩形范围填充椭圆
+ * x, y             矩形左上角坐标
+ * width, height    矩形宽度高度
+ */
+void fill_ellipse_r(float x, float y, float width, float height);
 
 /* 绘制空心圆，xy为圆心
  * x, y             圆心坐标
