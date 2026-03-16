@@ -358,7 +358,7 @@ public:
     void setTitle(const unistring& text)
     {
         // clang-format off
-        #ifdef UNICODE
+        #if defined(UNICODE)
         SetWindowTextW(m_handle, text.c_str());
         #else
         std::string buf = to_ansi(text.c_str(), text.length());

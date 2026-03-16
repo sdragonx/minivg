@@ -15,9 +15,15 @@
  Visiual Studio:
     这个库不需要其他设置就能用。
  g++ (mingw32/64):
-    如果用的是 g++ 编译器，比如 DevCPP，默认一般使用 gbk 编码，可以在编译参数里面添加 -finput-charset=GBK
-    来支持中文字符。如果你的工程使用的是 utf8 编码，可以把 "minivg.hpp", "minivg.inl" 这两个文件转成 utf8 编码来使用，
-    编译器的参数添加 -finput-charset=utf-8 来支持 utf8 编码。
+    如果用的是 g++ 编译器，比如 DevCPP，默认一般使用 gbk 编码，源文件是 gbk 编码，
+    在编译参数里面添加以下参数来支持中文字符：
+        -finput-charset=GBK
+        -fexec-charset=GBK
+    如果你的工程使用的是 utf8 编码，可以把 "minivg.hpp", "minivg.inl" 这两个文件转成 utf8 编码来使用，
+    并在编译参数里面添加以下参数来支持中文字符：(现在默认是 utf8 格式)
+        -finput-charset=utf-8
+        -fexec-charset=GBK
+
     库链接里面添加 -lgdi32 -lgdiplus 两个库的引用。
 
 示例代码：
