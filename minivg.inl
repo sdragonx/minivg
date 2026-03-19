@@ -69,6 +69,34 @@ inline double tick_time()
     //*/
 }
 
+MINIVG_INLINE void log(const char* file, size_t line, const char* param, ...)
+{
+    printf("minivg> file: %s (%d)\n", file, line);
+    printf("minivg> ");
+    va_list body;
+    va_start(body, param);
+#ifdef _MSC_VER
+    vprintf_s(param, body);
+#else
+    vprintf(param, body);
+#endif
+    va_end(body);
+}
+
+// #define MINIVG_LOG(param, ...) detail::log(__FILE__, __LINE__, param, ##__VA_ARGS__)
+
+#define MINIVG_LOG(...) \
+    printf(__VA_ARGS__);
+
+#define MINIVG_LOG_ERROR(...) \
+    do { \
+        printf("minivg> file: %s (%d)\n", __FILE__, __LINE__); \
+        printf("minivg> "); \
+        printf(__VA_ARGS__); \
+        printf("application abort.\n"); \
+        exit(-1); \
+    } while (0);
+
 //---------------------------------------------------------------------------
 // 资源管理类
 //---------------------------------------------------------------------------
@@ -351,7 +379,7 @@ public:
             SetForegroundWindow(owner);
         }
 
-        return int(msg.wParam);
+        return static_cast<int>(msg.wParam);
     }
 
     // 设置窗口标题
@@ -839,13 +867,17 @@ public:
     // 重建背景缓冲区
     void viewport(int x, int y, int width, int height)
     {
-        closeGraphics();
-
         if (!width || !height) {
             return;
         }
 
         if (width != viewRect.Width || height != viewRect.Height) {
+            // 2026-03-19 00:33:07
+            // 删除 Graphics 和位图
+            safe_delete(g);
+            delete_object(pixelbuf);
+
+            // 重建位图和 Graphics
             pixelbuf = bm_create(width, height);
             SelectObject(hdc, pixelbuf);
             g = new Gdiplus::Graphics(hdc);
@@ -893,9 +925,13 @@ public:
             this->repaint();
             break;
         case WM_SIZE: {
-            int w = LOWORD(lParam) - viewRect.X;
-            int h = HIWORD(lParam) - viewRect.Y;
-            this->viewport(viewRect.X, viewRect.Y, w, h);
+            int w = LOWORD(lParam);
+            int h = HIWORD(lParam);
+            // MINIVG_LOG("resize: %d, %d\n", w, h);
+            // 2026-03-19 00:24:55 窗口最小化之后，宽高是 0，导致 Graphics 失效
+            if (w != 0 && h != 0) {
+                this->viewport(viewRect.X, viewRect.Y, w - viewRect.X, h - viewRect.Y);
+            }
             break;
         }
         case WM_PAINT:
@@ -923,7 +959,7 @@ public:
 
         case WM_MOUSEMOVE:
             if (OnMouseMove)
-                OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), int(wParam) & 0x13);
+                OnMouseMove(GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam), static_cast<int>(wParam) & 0x13);
             break;
         case WM_LBUTTONDOWN:
             if (OnMouseDown)
@@ -979,23 +1015,15 @@ protected:
     // 关闭 Gdiplus
     void gdiplusShutdown()
     {
-        closeGraphics();
+        safe_delete(g);
+        delete_object(pixelbuf);
         delete_object(hdc);
-        detail::safe_delete(pen);
-        detail::safe_delete(brush);
-        detail::safe_delete(font);
-        detail::safe_delete(textBrush);
+        safe_delete(pen);
+        safe_delete(brush);
+        safe_delete(font);
+        safe_delete(textBrush);
 
         Gdiplus::GdiplusShutdown(token);
-    }
-
-    // 关闭 Graphics
-    void closeGraphics()
-    {
-        detail::safe_delete(g);
-        if (pixelbuf) {
-            delete_object(pixelbuf);
-        }
     }
 
     // 窗口重绘事件
@@ -1726,7 +1754,7 @@ MINIVG_INLINE void draw_polyline(const vec2f* points, size_t size)
 {
     if (detail::instance().g) {
         detail::instance().g->DrawLines(
-            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), static_cast<int>(size)
         );
     }
 }
@@ -1736,7 +1764,7 @@ MINIVG_INLINE void draw_polygon(const vec2f* points, size_t size)
 {
     if (detail::instance().g) {
         detail::instance().g->DrawPolygon(
-            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+            detail::instance().pen, reinterpret_cast<const Gdiplus::PointF*>(points), static_cast<int>(size)
         );
     }
 }
@@ -1746,7 +1774,7 @@ MINIVG_INLINE void fill_polygon(const vec2f* points, size_t size)
 {
     if (detail::instance().g) {
         detail::instance().g->FillPolygon(
-            detail::instance().brush, reinterpret_cast<const Gdiplus::PointF*>(points), int(size)
+            detail::instance().brush, reinterpret_cast<const Gdiplus::PointF*>(points), static_cast<int>(size)
         );
     }
 }
@@ -1870,12 +1898,18 @@ MINIVG_INLINE void textout(float x, float y, const wchar_t* text, size_t length)
         }
 
         Gdiplus::StringFormat format;
+        format.SetFormatFlags(Gdiplus::StringFormatFlagsNoFitBlackBox | Gdiplus::StringFormatFlagsDisplayFormatControl | Gdiplus::StringFormatFlagsLineLimit | Gdiplus::StringFormatFlagsNoClip);
         vg.g->DrawString(
-            text, INT(length), vg.font, Gdiplus::PointF(x, y), &format, vg.textBrush
+            text, static_cast<int>(length),
+            vg.font,
+            Gdiplus::PointF(x, y),
+            // Gdiplus::StringFormat::GenericTypographic(),
+            &format,
+            vg.textBrush
         );
     }
     else {
-        printf("error: context is null.\n");
+        MINIVG_LOG_ERROR("error: context is null.\n");
     }
 }
 
@@ -1915,7 +1949,7 @@ MINIVG_INLINE void drawtext(float x, float y, float width, float height, const u
         format.SetLineAlignment((Gdiplus::StringAlignment) vAlign); // 垂直对齐
         Gdiplus::RectF rect(x, y, width, height);
         detail::instance().g->DrawString(
-            text.c_str(), INT(text.length()), detail::instance().font, rect, &format, detail::instance().textBrush
+            text.c_str(), static_cast<int>(text.length()), detail::instance().font, rect, &format, detail::instance().textBrush
         );
     }
 }
@@ -1923,60 +1957,70 @@ MINIVG_INLINE void drawtext(float x, float y, float width, float height, const u
 // 字体格式化输出，和 printf 使用类似
 MINIVG_INLINE void print(float x, float y, const char* param, ...)
 {
-    const size_t size = 1024;
+    const size_t size = 256;
+    char buf[size]    = { 0 };
+
     va_list body;
-    char buf[size] = { 0 };
     va_start(body, param);
 #ifdef _MSC_VER
     _vsnprintf_s(buf, size, size - 1, param, body);
 #else
-    vsnprintf(buf, 1024, param, body);
+    vsnprintf(buf, size, param, body);
 #endif
-    textout(x, y, buf, strlen(buf));
     va_end(body);
+
+    textout(x, y, buf, strlen(buf));
 }
 
 MINIVG_INLINE void print(float x, float y, const wchar_t* param, ...)
 {
-    const size_t size = 1024;
-    va_list body;
+    const size_t size = 256;
     wchar_t buf[size] = { 0 };
+
+    va_list body;
     va_start(body, param);
 #ifdef _MSC_VER
     _vsnwprintf_s(buf, size, size - 1, param, body);
 #else
-    vsnwprintf(buf, 1024, param, body);
+    vsnwprintf(buf, size, param, body);
 #endif
-    textout(x, y, buf, wcslen(buf));
     va_end(body);
+
+    textout(x, y, buf, wcslen(buf));
+}
+
+// 获取字符串的像素宽高
+MINIVG_INLINE vec2f textsize(const unistring& text)
+{
+    if (detail::instance().g) {
+        Gdiplus::SizeF layoutSize(0, 0); // (FLT_MAX, FLT_MAX);
+        Gdiplus::SizeF size;
+        Gdiplus::StringFormat format;
+        format.SetFormatFlags(Gdiplus::StringFormatFlagsNoFitBlackBox | Gdiplus::StringFormatFlagsDisplayFormatControl | Gdiplus::StringFormatFlagsLineLimit | Gdiplus::StringFormatFlagsNoClip);
+        format.SetTrimming(Gdiplus::StringTrimmingNone);
+        detail::instance().g->MeasureString(
+            text.c_str(), static_cast<int>(text.length()),
+            detail::instance().font,
+            layoutSize,
+            // Gdiplus::StringFormat::GenericTypographic(),
+            &format,
+            &size
+        );
+        return vec2f(size.Width, size.Height);
+    }
+    return vec2f();
 }
 
 // 获取字符串的像素宽度
 MINIVG_INLINE float textwidth(const unistring& text)
 {
-    if (detail::instance().g) {
-        Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
-        Gdiplus::SizeF size;
-        detail::instance().g->MeasureString(
-            text.c_str(), int(text.length()), detail::instance().font, layoutSize, nullptr, &size
-        );
-        return size.Width;
-    }
-    return 0;
+    return textsize(text).x;
 }
 
 // 获取字符串的像素高度
 MINIVG_INLINE float textheight(const unistring& text)
 {
-    if (detail::instance().g) {
-        Gdiplus::SizeF layoutSize(FLT_MAX, FLT_MAX);
-        Gdiplus::SizeF size;
-        detail::instance().g->MeasureString(
-            text.c_str(), int(text.length()), detail::instance().font, layoutSize, nullptr, &size
-        );
-        return size.Height;
-    }
-    return 0;
+    return textsize(text).y;
 }
 
 //---------------------------------------------------------------------------

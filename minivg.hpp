@@ -1133,6 +1133,9 @@ void drawtext(float x, float y, float width, float height, const unistring& text
 void print(float x, float y, const char* param, ...);
 void print(float x, float y, const wchar_t* param, ...);
 
+// 获取字符串的像素宽高
+vec2f textsize(const unistring& text);
+
 // 获取字符串的像素宽度
 float textwidth(const unistring& text);
 
